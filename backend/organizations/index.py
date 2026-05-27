@@ -1,0 +1,189 @@
+import json
+import os
+import psycopg2
+
+SCHEMA = "t_p25281756_mental_health_app_co"
+
+def get_conn():
+    return psycopg2.connect(os.environ["DATABASE_URL"])
+
+def cors_headers():
+    return {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+    }
+
+def handler(event: dict, context) -> dict:
+    """Управление организациями: получение списка, добавление, редактирование, удаление."""
+    if event.get("httpMethod") == "OPTIONS":
+        return {"statusCode": 200, "headers": cors_headers(), "body": ""}
+
+    method = event.get("httpMethod", "GET")
+    params = event.get("queryStringParameters") or {}
+
+    if method == "GET":
+        return get_organizations(params)
+    elif method == "POST":
+        body = json.loads(event.get("body") or "{}")
+        return create_organization(body)
+    elif method == "PUT":
+        body = json.loads(event.get("body") or "{}")
+        org_id = params.get("id")
+        return update_organization(org_id, body)
+    elif method == "DELETE":
+        org_id = params.get("id")
+        return delete_organization(org_id)
+
+    return {"statusCode": 405, "headers": cors_headers(), "body": json.dumps({"error": "Method not allowed"})}
+
+
+def get_organizations(params: dict) -> dict:
+    conn = get_conn()
+    cur = conn.cursor()
+
+    conditions = []
+    values = []
+
+    search = params.get("search", "").strip()
+    if search:
+        conditions.append("(name ILIKE %s OR city ILIKE %s OR category ILIKE %s OR help_types ILIKE %s)")
+        values += [f"%{search}%", f"%{search}%", f"%{search}%", f"%{search}%"]
+
+    category = params.get("category", "").strip()
+    if category:
+        conditions.append("category ILIKE %s")
+        values.append(f"%{category}%")
+
+    city = params.get("city", "").strip()
+    if city:
+        conditions.append("city ILIKE %s")
+        values.append(f"%{city}%")
+
+    status = params.get("status", "").strip()
+    if status:
+        conditions.append("verification_status = %s")
+        values.append(status)
+
+    where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
+
+    cur.execute(
+        f"SELECT id, number, name, category, org_type, target_group, short_description, help_types, help_format, conditions, city, address, phones, email, website_social, director, coordinates, verification_status, verified_at, created_at, updated_at FROM {SCHEMA}.organizations {where} ORDER BY number NULLS LAST, id",
+        values,
+    )
+
+    cols = [d[0] for d in cur.description]
+    rows = []
+    for row in cur.fetchall():
+        obj = dict(zip(cols, row))
+        for k, v in obj.items():
+            if hasattr(v, "isoformat"):
+                obj[k] = v.isoformat()
+        rows.append(obj)
+
+    cur.close()
+    conn.close()
+
+    return {
+        "statusCode": 200,
+        "headers": {**cors_headers(), "Content-Type": "application/json"},
+        "body": json.dumps({"organizations": rows, "total": len(rows)}, ensure_ascii=False),
+    }
+
+
+def create_organization(data: dict) -> dict:
+    conn = get_conn()
+    cur = conn.cursor()
+
+    cur.execute(
+        f"""INSERT INTO {SCHEMA}.organizations
+        (number, name, category, org_type, target_group, short_description, help_types, help_format, conditions, city, address, phones, email, website_social, director, coordinates, verification_status)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        RETURNING id""",
+        (
+            data.get("number"),
+            data.get("name", ""),
+            data.get("category"),
+            data.get("org_type"),
+            data.get("target_group"),
+            data.get("short_description"),
+            data.get("help_types"),
+            data.get("help_format"),
+            data.get("conditions"),
+            data.get("city"),
+            data.get("address"),
+            data.get("phones"),
+            data.get("email"),
+            data.get("website_social"),
+            data.get("director"),
+            data.get("coordinates"),
+            data.get("verification_status", "pending"),
+        ),
+    )
+    new_id = cur.fetchone()[0]
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return {
+        "statusCode": 201,
+        "headers": {**cors_headers(), "Content-Type": "application/json"},
+        "body": json.dumps({"id": new_id, "ok": True}, ensure_ascii=False),
+    }
+
+
+def update_organization(org_id, data: dict) -> dict:
+    if not org_id:
+        return {"statusCode": 400, "headers": cors_headers(), "body": json.dumps({"error": "id required"})}
+
+    conn = get_conn()
+    cur = conn.cursor()
+
+    fields = ["number", "name", "category", "org_type", "target_group", "short_description",
+              "help_types", "help_format", "conditions", "city", "address", "phones",
+              "email", "website_social", "director", "coordinates", "verification_status", "verified_at"]
+
+    set_parts = []
+    values = []
+    for f in fields:
+        if f in data:
+            set_parts.append(f"{f} = %s")
+            values.append(data[f])
+
+    if not set_parts:
+        return {"statusCode": 400, "headers": cors_headers(), "body": json.dumps({"error": "no fields to update"})}
+
+    set_parts.append("updated_at = NOW()")
+    values.append(org_id)
+
+    cur.execute(
+        f"UPDATE {SCHEMA}.organizations SET {', '.join(set_parts)} WHERE id = %s",
+        values,
+    )
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return {
+        "statusCode": 200,
+        "headers": {**cors_headers(), "Content-Type": "application/json"},
+        "body": json.dumps({"ok": True}, ensure_ascii=False),
+    }
+
+
+def delete_organization(org_id) -> dict:
+    if not org_id:
+        return {"statusCode": 400, "headers": cors_headers(), "body": json.dumps({"error": "id required"})}
+
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(f"DELETE FROM {SCHEMA}.organizations WHERE id = %s", (org_id,))
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return {
+        "statusCode": 200,
+        "headers": {**cors_headers(), "Content-Type": "application/json"},
+        "body": json.dumps({"ok": True}, ensure_ascii=False),
+    }

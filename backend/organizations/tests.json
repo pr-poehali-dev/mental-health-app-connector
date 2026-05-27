@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "Получить список организаций",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 200,
+      "expectedBody": { "total": 23 },
+      "bodyMatcher": "partial"
+    }
+  ]
+}
