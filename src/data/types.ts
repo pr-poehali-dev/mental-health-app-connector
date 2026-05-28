@@ -73,13 +73,17 @@ export const CATEGORY_META: Record<OrgCategory, { label: string; color: string; 
 };
 
 // Маппинг реальных значений category из БД → ключ CATEGORY_META
-export function dbCategoryToKey(category: string | null | undefined): OrgCategory {
+export function dbCategoryToKey(category: string | null | undefined, name?: string | null): OrgCategory {
   const c = (category ?? "").toLowerCase();
+  const n = (name ?? "").toLowerCase();
   if (c.includes("медицин") || c.includes("санатор") || c.includes("психотерап") || c.includes("наркол")) return "healthcare";
-  // НКО — проверяется до соцзащиты, чтобы «благотворительная / социально-поддерживающая» не уходила в соц
+  // НКО — по категории ИЛИ по названию (АНО, автономная, фонд, общественная в названии)
   if (
     c.includes("некоммерч") || c.includes("нко") || c.includes("благотворит") ||
-    c.includes("автономн") || c.includes("общественн") || c.includes("фонд")
+    c.includes("автономн") || c.includes("общественн") || c.includes("фонд") ||
+    n.includes("ано ") || n.startsWith("ано ") || n.includes("(ано") ||
+    n.includes("автономная некоммерческая") || n.includes("общественная организация") ||
+    n.includes("благотворительный фонд") || n.includes("фонд ")
   ) return "nko";
   if (
     c.includes("соц") || c.includes("дом-интернат") || c.includes("интернат") ||

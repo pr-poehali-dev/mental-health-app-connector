@@ -44,7 +44,7 @@ const verStatusLabel: Record<string, string> = {
 };
 
 function DbOrgCard({ org, onSelect }: { org: DbOrganization; onSelect: () => void }) {
-  const cat = CATEGORY_META[dbCategoryToKey(org.category)];
+  const cat = CATEGORY_META[dbCategoryToKey(org.category, org.name)];
 
   const tags = org.target_group ? org.target_group.split(";").map(s => s.trim()).filter(Boolean).slice(0, 3) : [];
 
@@ -148,7 +148,7 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
       list = list.filter((o) => (o.city ?? "").toLowerCase().includes(filters.region.toLowerCase()));
     }
     if (filters.categories.length) {
-      list = list.filter((o) => filters.categories.includes(dbCategoryToKey(o.category)));
+      list = list.filter((o) => filters.categories.includes(dbCategoryToKey(o.category, o.name)));
     }
 
     if (sortBy === "updated")

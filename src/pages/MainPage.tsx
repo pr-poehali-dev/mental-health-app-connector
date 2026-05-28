@@ -170,7 +170,7 @@ export default function MainPage({ onNavigate }: Props) {
           </div>
           <div className="grid grid-cols-2 gap-2">
             {categories.map(([key, meta]) => {
-              const count = orgs.filter((o) => dbCategoryToKey(o.category) === key).length;
+              const count = orgs.filter((o) => dbCategoryToKey(o.category, o.name) === key).length;
               return (
                 <button
                   key={key}

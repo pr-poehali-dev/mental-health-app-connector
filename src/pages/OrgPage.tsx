@@ -65,7 +65,7 @@ export default function OrgPage({ orgId, onBack }: Props) {
   }
 
   const badge = verBadge[org.verification_status] ?? verBadge.pending;
-  const cat = CATEGORY_META[dbCategoryToKey(org.category)];
+  const cat = CATEGORY_META[dbCategoryToKey(org.category, org.name)];
 
   // city может содержать «По направлению», «Уточняется» — тогда реальный город в address
   const FAKE_CITY = ["по направлению", "по иппсу", "по ппсу", "уточняется", "уточнить", "по решению", "экстренно"];
