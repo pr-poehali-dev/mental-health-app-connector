@@ -180,6 +180,13 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
 
           {/* Строка поиска + кнопки */}
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => onNavigate("home")}
+              className="flex-shrink-0 flex items-center justify-center w-11 h-11 rounded-xl border border-[hsl(var(--border))] bg-white text-[hsl(var(--muted-foreground))]"
+              title="На главную"
+            >
+              <Icon name="ArrowLeft" size={18} />
+            </button>
             <div className="relative flex-1">
               <Icon name="Search" size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
               <input
