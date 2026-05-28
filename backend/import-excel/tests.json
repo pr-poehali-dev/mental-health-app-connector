@@ -1,0 +1,12 @@
+{
+  "tests": [
+    {
+      "name": "List S3 files",
+      "method": "GET",
+      "path": "/?mode=list",
+      "expectedStatus": 200,
+      "expectedBody": {"files": []},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
