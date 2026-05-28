@@ -9,25 +9,39 @@ interface Props {
 
 const scenarios = [
   {
-    icon: "👤",
-    label: "Я сам",
-    desc: "Ищу помощь для себя",
-    q: "",
+    icon: "👧",
+    label: "Дети и подростки",
+    desc: "0–18 лет",
+    q: "дети",
     color: "bg-blue-50 border-blue-200 hover:border-blue-400",
   },
   {
-    icon: "👨‍👩‍👧",
-    label: "Родственник",
-    desc: "Ищу помощь для близкого",
-    q: "family",
+    icon: "👤",
+    label: "Взрослые",
+    desc: "Психические расстройства, зависимости",
+    q: "взрослые",
     color: "bg-emerald-50 border-emerald-200 hover:border-emerald-400",
   },
   {
-    icon: "🎓",
-    label: "Специалист",
-    desc: "Направляю пациента / клиента",
-    q: "specialist",
+    icon: "👴",
+    label: "Пожилые",
+    desc: "Помощь пожилым людям",
+    q: "пожил",
+    color: "bg-amber-50 border-amber-200 hover:border-amber-400",
+  },
+  {
+    icon: "👨‍👩‍👧",
+    label: "Семьи и родственники",
+    desc: "Помощь близким и опекунам",
+    q: "семь",
     color: "bg-violet-50 border-violet-200 hover:border-violet-400",
+  },
+  {
+    icon: "🎓",
+    label: "Специалистам",
+    desc: "Направление пациента / клиента",
+    q: "специалист",
+    color: "bg-rose-50 border-rose-200 hover:border-rose-400",
   },
 ];
 
@@ -128,15 +142,15 @@ export default function MainPage({ onNavigate }: Props) {
 
         {/* Сценарии */}
         <section>
-          <h2 className="font-sans font-semibold text-sm text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3">Кто ищет помощь?</h2>
-          <div className="grid grid-cols-3 gap-2">
+          <h2 className="font-sans font-semibold text-sm text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3">Кому нужна помощь?</h2>
+          <div className="grid grid-cols-2 gap-2">
             {scenarios.map((s) => (
               <button
                 key={s.label}
-                onClick={() => onNavigate("catalog", { who: s.q })}
-                className={`flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all duration-150 text-center ${s.color}`}
+                onClick={() => onNavigate("catalog", { search: s.q })}
+                className={`flex items-center gap-3 p-3.5 rounded-2xl border-2 transition-all duration-150 text-left ${s.color}`}
               >
-                <span className="text-2xl">{s.icon}</span>
+                <span className="text-2xl flex-shrink-0">{s.icon}</span>
                 <div>
                   <div className="font-semibold text-xs text-[hsl(var(--foreground))]">{s.label}</div>
                   <div className="text-[10px] text-[hsl(var(--muted-foreground))] mt-0.5 leading-tight">{s.desc}</div>

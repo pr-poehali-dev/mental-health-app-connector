@@ -18,6 +18,7 @@ import { fetchOrganizations, type DbOrganization } from "@/api/organizations";
 interface Props {
   onNavigate: (page: string, params?: Record<string, string>) => void;
   initialCategory?: string;
+  initialSearch?: string;
 }
 
 interface Filters {
@@ -106,11 +107,11 @@ function DbOrgCard({ org, onSelect }: { org: DbOrganization; onSelect: () => voi
   );
 }
 
-export default function CatalogPage({ onNavigate, initialCategory }: Props) {
+export default function CatalogPage({ onNavigate, initialCategory, initialSearch }: Props) {
   const [allOrgs, setAllOrgs] = useState<DbOrganization[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState<Filters>({
-    search: "",
+    search: initialSearch ?? "",
     region: "Вся Россия",
     categories: initialCategory ? [initialCategory as OrgCategory] : [],
     ageGroups: [],

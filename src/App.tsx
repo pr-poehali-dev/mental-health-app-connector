@@ -59,6 +59,7 @@ const App = () => {
           <CatalogPage
             onNavigate={navigate}
             initialCategory={nav.params.category}
+            initialSearch={nav.params.search}
           />
         );
       case "org":
