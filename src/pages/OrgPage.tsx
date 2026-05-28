@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { fetchOrganizations, type DbOrganization } from "@/api/organizations";
+import { CATEGORY_META, dbCategoryToKey } from "@/data/types";
 
 interface Props {
   orgId: string;
@@ -64,6 +65,18 @@ export default function OrgPage({ orgId, onBack }: Props) {
   }
 
   const badge = verBadge[org.verification_status] ?? verBadge.pending;
+  const cat = CATEGORY_META[dbCategoryToKey(org.category)];
+
+  // city может содержать «По направлению», «Уточняется» — тогда реальный город в address
+  const FAKE_CITY = ["по направлению", "по иппсу", "по ппсу", "уточняется", "уточнить", "по решению", "экстренно"];
+  const isFakeCity = FAKE_CITY.some(m => (org.city ?? "").toLowerCase().includes(m));
+  const displayCity = isFakeCity ? null : org.city;
+  // Адрес: убираем индекс и "Алтайский край, ..."
+  const cleanAddress = (org.address ?? "")
+    .replace(/^\d{6},?\s*/, "")
+    .replace(/[А-Яа-яёЁ]+ (край|область|обл\.|р-н|район),?\s*/g, "")
+    .trim().replace(/^,\s*/, "");
+
   const phones = splitSemicolon(org.phones);
   const helpTypes = splitSemicolon(org.help_types);
   const helpFormats = splitSemicolon(org.help_format);
@@ -84,20 +97,22 @@ export default function OrgPage({ orgId, onBack }: Props) {
           </button>
 
           <div className="flex items-start gap-4">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 bg-white shadow-sm border border-[hsl(var(--border))]">
-              🏥
+            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 shadow-sm border ${cat.bg}`}>
+              {cat.icon}
             </div>
             <div>
               {org.category && (
-                <span className="inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white text-[hsl(var(--muted-foreground))] border border-[hsl(var(--border))] mb-2">
+                <span className={`inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border mb-2 ${cat.bg} ${cat.color}`}>
                   {org.category}
                 </span>
               )}
               <h1 className="font-serif text-xl font-medium text-[hsl(var(--foreground))] leading-snug">{org.name}</h1>
-              {org.city && (
+              {(displayCity || cleanAddress) && (
                 <div className="flex items-center gap-1 mt-1.5 text-xs text-[hsl(var(--muted-foreground))]">
                   <Icon name="MapPin" size={11} />
-                  {org.city}{org.address && `, ${org.address}`}
+                  {displayCity && cleanAddress
+                    ? `${displayCity}, ${cleanAddress}`
+                    : displayCity || cleanAddress}
                 </div>
               )}
             </div>
@@ -180,14 +195,16 @@ export default function OrgPage({ orgId, onBack }: Props) {
         <div className="bg-white rounded-2xl border border-[hsl(var(--border))] p-4">
           <h2 className="font-semibold text-xs text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3">Контакты</h2>
           <div className="space-y-2.5">
-            {org.address && (
+            {(cleanAddress || displayCity) && (
               <div className="flex items-center gap-3">
                 <div className="w-8 h-8 rounded-xl bg-[hsl(var(--muted))] flex items-center justify-center flex-shrink-0">
                   <Icon name="MapPin" size={14} className="text-[hsl(var(--muted-foreground))]" />
                 </div>
                 <div>
                   <div className="text-[10px] text-[hsl(var(--muted-foreground))]">Адрес</div>
-                  <div className="text-sm font-medium text-[hsl(var(--foreground))]">{org.city && `${org.city}, `}{org.address}</div>
+                  <div className="text-sm font-medium text-[hsl(var(--foreground))]">
+                    {displayCity && cleanAddress ? `${displayCity}, ${cleanAddress}` : displayCity || cleanAddress}
+                  </div>
                 </div>
               </div>
             )}

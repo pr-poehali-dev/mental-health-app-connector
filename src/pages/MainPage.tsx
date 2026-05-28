@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
-import { CATEGORY_META, type OrgCategory } from "@/data/types";
+import { CATEGORY_META, dbCategoryToKey, type OrgCategory } from "@/data/types";
 import { fetchOrganizations, type DbOrganization } from "@/api/organizations";
 
 interface Props {
@@ -170,15 +170,7 @@ export default function MainPage({ onNavigate }: Props) {
           </div>
           <div className="grid grid-cols-2 gap-2">
             {categories.map(([key, meta]) => {
-              const count = orgs.filter((o) => (o.category ?? "").toLowerCase().includes(
-                key === "healthcare" ? "медицин" :
-                key === "nko" ? "нко" :
-                key === "social" ? "соц" :
-                key === "education" ? "образов" :
-                key === "crisis" ? "кризис" :
-                key === "sport" ? "спорт" :
-                key === "culture" ? "культур" : key
-              )).length;
+              const count = orgs.filter((o) => dbCategoryToKey(o.category) === key).length;
               return (
                 <button
                   key={key}

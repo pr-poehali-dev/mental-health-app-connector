@@ -64,13 +64,31 @@ export interface Organization {
 
 export const CATEGORY_META: Record<OrgCategory, { label: string; color: string; bg: string; icon: string }> = {
   healthcare: { label: "Здравоохранение", color: "text-blue-700", bg: "bg-blue-50 border-blue-200", icon: "🏥" },
-  nko: { label: "НКО", color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", icon: "🤝" },
+  nko: { label: "Некоммерческий сектор", color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", icon: "🤝" },
   social: { label: "Соцзащита", color: "text-orange-700", bg: "bg-orange-50 border-orange-200", icon: "🏛" },
   education: { label: "Образование", color: "text-violet-700", bg: "bg-violet-50 border-violet-200", icon: "📚" },
   sport: { label: "Спорт", color: "text-green-700", bg: "bg-green-50 border-green-200", icon: "⚽" },
   culture: { label: "Культура", color: "text-pink-700", bg: "bg-pink-50 border-pink-200", icon: "🎭" },
   crisis: { label: "Кризисная помощь", color: "text-red-700", bg: "bg-red-50 border-red-200", icon: "🆘" },
 };
+
+// Маппинг реальных значений category из БД → ключ CATEGORY_META
+export function dbCategoryToKey(category: string | null | undefined): OrgCategory {
+  const c = (category ?? "").toLowerCase();
+  if (c.includes("медицин") || c.includes("санатор") || c.includes("психотерап") || c.includes("наркол")) return "healthcare";
+  if (c.includes("некоммерч") || c.includes("нко") || c.includes("благотворит") || c.includes("анo") || c.includes("ано ")) return "nko";
+  if (
+    c.includes("соц") || c.includes("дом-интернат") || c.includes("интернат") ||
+    c.includes("реабилитац") || c.includes("абилитац") || c.includes("центр дневн") ||
+    c.includes("тренировочн") || c.includes("сопровождаем") || c.includes("трудов") ||
+    c.includes("государствен") || c.includes("ранн")
+  ) return "social";
+  if (c.includes("образов") || c.includes("школа") || c.includes("информационн")) return "education";
+  if (c.includes("спорт") || c.includes("физическ")) return "sport";
+  if (c.includes("культур") || c.includes("искусств")) return "culture";
+  if (c.includes("кризис")) return "crisis";
+  return "social";
+}
 
 export const AGE_META: Record<AgeGroup, { label: string; icon: string }> = {
   children: { label: "Дети", icon: "👦" },

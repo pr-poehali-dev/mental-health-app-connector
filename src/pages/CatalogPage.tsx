@@ -7,6 +7,7 @@ import {
   SERVICE_META,
   PAYMENT_META,
   REGIONS,
+  dbCategoryToKey,
   type OrgCategory,
   type AgeGroup,
   type SpecialNeed,
@@ -43,13 +44,7 @@ const verStatusLabel: Record<string, string> = {
 };
 
 function DbOrgCard({ org, onSelect }: { org: DbOrganization; onSelect: () => void }) {
-  const categoryKey = org.category?.toLowerCase().includes("медицин") ? "healthcare"
-    : org.category?.toLowerCase().includes("нко") || org.category?.toLowerCase().includes("некоммерч") ? "nko"
-    : org.category?.toLowerCase().includes("соц") ? "social"
-    : org.category?.toLowerCase().includes("образов") ? "education"
-    : org.category?.toLowerCase().includes("кризис") ? "crisis"
-    : "social";
-  const cat = CATEGORY_META[categoryKey as keyof typeof CATEGORY_META] ?? CATEGORY_META.social;
+  const cat = CATEGORY_META[dbCategoryToKey(org.category)];
 
   const tags = org.target_group ? org.target_group.split(";").map(s => s.trim()).filter(Boolean).slice(0, 3) : [];
 
@@ -153,17 +148,7 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
       list = list.filter((o) => (o.city ?? "").toLowerCase().includes(filters.region.toLowerCase()));
     }
     if (filters.categories.length) {
-      list = list.filter((o) => {
-        const cat = (o.category ?? "").toLowerCase();
-        return filters.categories.some((c) => {
-          if (c === "healthcare") return cat.includes("медицин");
-          if (c === "nko") return cat.includes("нко") || cat.includes("некоммерч");
-          if (c === "social") return cat.includes("соц");
-          if (c === "education") return cat.includes("образов");
-          if (c === "crisis") return cat.includes("кризис");
-          return false;
-        });
-      });
+      list = list.filter((o) => filters.categories.includes(dbCategoryToKey(o.category)));
     }
 
     if (sortBy === "updated")
