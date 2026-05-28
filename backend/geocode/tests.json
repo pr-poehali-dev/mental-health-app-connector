@@ -1,0 +1,13 @@
+{
+  "tests": [
+    {
+      "name": "Geocode batch",
+      "method": "POST",
+      "path": "/",
+      "body": {"offset": 0, "limit": 3},
+      "expectedStatus": 200,
+      "expectedBody": {"updated": 3},
+      "bodyMatcher": "partial"
+    }
+  ]
+}
