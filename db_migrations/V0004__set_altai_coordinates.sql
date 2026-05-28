@@ -1,0 +1,15 @@
+UPDATE t_p25281756_mental_health_app_co.organizations SET coordinates = '53.3479,83.7798' WHERE city IN ('Барнаул', 'г. Барнаул');
+UPDATE t_p25281756_mental_health_app_co.organizations SET coordinates = '52.5412,85.1545' WHERE city IN ('Бийск', 'г. Бийск');
+UPDATE t_p25281756_mental_health_app_co.organizations SET coordinates = '51.5032,81.2103' WHERE city IN ('Рубцовск', 'г. Рубцовск');
+UPDATE t_p25281756_mental_health_app_co.organizations SET coordinates = '53.7917,81.3450' WHERE city = 'Камень-на-Оби';
+UPDATE t_p25281756_mental_health_app_co.organizations SET coordinates = '51.9241,84.6888' WHERE city = 'с. Алтайское';
+UPDATE t_p25281756_mental_health_app_co.organizations SET coordinates = '53.5833,83.9333' WHERE city = 'с. Березовка';
+UPDATE t_p25281756_mental_health_app_co.organizations SET coordinates = '53.5147,83.9856' WHERE city = 'с. Боровиха';
+UPDATE t_p25281756_mental_health_app_co.organizations SET coordinates = '51.7833,79.9167' WHERE city = 'с. Волчиха';
+UPDATE t_p25281756_mental_health_app_co.organizations SET coordinates = '52.1167,80.3333' WHERE city = 'с. Дружба';
+UPDATE t_p25281756_mental_health_app_co.organizations SET coordinates = '51.8500,82.5500' WHERE city = 'с. Ключи';
+UPDATE t_p25281756_mental_health_app_co.organizations SET coordinates = '53.2167,82.5500' WHERE city = 'с. Крестьянка';
+UPDATE t_p25281756_mental_health_app_co.organizations SET coordinates = '51.6000,80.5833' WHERE city = 'с. Курск';
+UPDATE t_p25281756_mental_health_app_co.organizations SET coordinates = '52.0833,81.5333' WHERE city = 'с. Новоегорьевское';
+UPDATE t_p25281756_mental_health_app_co.organizations SET coordinates = '53.6167,80.4167' WHERE city = 'с. Усть-Мосиха';
+UPDATE t_p25281756_mental_health_app_co.organizations SET coordinates = '52.1333,82.2167' WHERE city = 'с. Шипуново';
