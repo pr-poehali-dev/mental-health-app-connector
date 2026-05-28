@@ -1,6 +1,7 @@
+import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { CATEGORY_META, type OrgCategory } from "@/data/types";
-import { organizations } from "@/data/organizations";
+import { fetchOrganizations, type DbOrganization } from "@/api/organizations";
 
 interface Props {
   onNavigate: (page: string, params?: Record<string, string>) => void;
@@ -31,9 +32,22 @@ const scenarios = [
 ];
 
 export default function MainPage({ onNavigate }: Props) {
-  const verified = organizations.filter((o) => o.verificationStatus === "verified").length;
-  const total = organizations.length;
-  const urgent = organizations.filter((o) => o.isUrgent);
+  const [orgs, setOrgs] = useState<DbOrganization[]>([]);
+
+  useEffect(() => {
+    fetchOrganizations().then(setOrgs);
+  }, []);
+
+  const verified = orgs.filter((o) => o.verification_status === "verified").length;
+  const total = orgs.length;
+
+  const categoryCounts = orgs.reduce<Record<string, number>>((acc, o) => {
+    if (!o.category) return acc;
+    const key = o.category.toLowerCase();
+    acc[key] = (acc[key] ?? 0) + 1;
+    return acc;
+  }, {});
+  const activeCategoryCount = Object.keys(categoryCounts).length;
 
   const categories = Object.entries(CATEGORY_META) as [OrgCategory, typeof CATEGORY_META[OrgCategory]][];
 
@@ -87,8 +101,8 @@ export default function MainPage({ onNavigate }: Props) {
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
               {verified} проверено
             </span>
-            <span>{total} организаций</span>
-            <span>7 категорий</span>
+            <span>{total || "..."} организаций</span>
+            <span>{activeCategoryCount || "..."} категорий</span>
           </div>
         </div>
       </div>
@@ -142,7 +156,15 @@ export default function MainPage({ onNavigate }: Props) {
           </div>
           <div className="grid grid-cols-2 gap-2">
             {categories.map(([key, meta]) => {
-              const count = organizations.filter((o) => o.category === key).length;
+              const count = orgs.filter((o) => (o.category ?? "").toLowerCase().includes(
+                key === "healthcare" ? "медицин" :
+                key === "nko" ? "нко" :
+                key === "social" ? "соц" :
+                key === "education" ? "образов" :
+                key === "crisis" ? "кризис" :
+                key === "sport" ? "спорт" :
+                key === "culture" ? "культур" : key
+              )).length;
               return (
                 <button
                   key={key}
@@ -157,38 +179,6 @@ export default function MainPage({ onNavigate }: Props) {
                 </button>
               );
             })}
-          </div>
-        </section>
-
-        {/* Срочные контакты */}
-        <section>
-          <h2 className="font-sans font-semibold text-sm text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3">Круглосуточная помощь</h2>
-          <div className="space-y-2">
-            {urgent.map((org) => (
-              <button
-                key={org.id}
-                onClick={() => onNavigate("org", { id: org.id })}
-                className="w-full flex items-center gap-3 p-4 rounded-2xl bg-white border border-[hsl(var(--border))] text-left card-hover"
-              >
-                <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center text-lg flex-shrink-0">
-                  {CATEGORY_META[org.category].icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="font-semibold text-sm text-[hsl(var(--foreground))] truncate">{org.shortName || org.name}</div>
-                  <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5 truncate">{org.simpleDescription}</div>
-                </div>
-                {org.phone && (
-                  <a
-                    href={`tel:${org.phone.replace(/[\s\-()]/g, "")}`}
-                    onClick={(e) => e.stopPropagation()}
-                    className="flex-shrink-0 w-9 h-9 rounded-xl bg-[hsl(var(--terra))] text-white flex items-center justify-center hover:bg-[hsl(16,55%,42%)] transition-colors"
-                    aria-label={`Позвонить: ${org.phone}`}
-                  >
-                    <Icon name="Phone" size={15} />
-                  </a>
-                )}
-              </button>
-            ))}
           </div>
         </section>
 
