@@ -62,15 +62,24 @@ def handler(event: dict, context) -> dict:
     updated = []
     failed = []
 
+    CITY_MARKERS = ("по направлению", "по ппсу", "по иппсу", "по решению", "экстренно", "самостоятельно", "платно", "бесплатно", "уточняется", "уточнить")
+
     for org_id, name, city, address in rows:
-        if not address or not city:
+        if not address and not city:
             failed.append({"id": org_id, "name": name, "reason": "no address"})
             continue
+
+        # Если city — это условие получения, а не город — берём address как город
+        city_lower = (city or "").lower()
+        if any(m in city_lower for m in CITY_MARKERS):
+            city = address  # address содержит реальный город
+            address = None
+
         try:
-            result = geocode_address(city, address)
+            result = geocode_address(city or "", address or "") if address else None
             if not result:
                 # Fallback: геокодируем только по городу
-                result = geocode_city(city)
+                result = geocode_city(city or "")
             if result:
                 lat, lon = result
                 coords = f"{lat:.6f},{lon:.6f}"
