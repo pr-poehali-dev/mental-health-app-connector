@@ -102,7 +102,7 @@ export default function AdminImport({ onDone }: Props) {
     if (!parsed || parsed.rows.length === 0) return;
     setLoading(true);
     try {
-      const res = await bulkCreateOrganizations(parsed.rows);
+      const res = await bulkCreateOrganizations(parsed.rows.map((r) => ({ ...r, verification_status: "verified" as const })));
       setResult(res);
       if (res.created > 0) {
         onDone(res.created);
