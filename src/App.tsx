@@ -62,14 +62,17 @@ const App = () => {
             initialSearch={nav.params.search}
           />
         );
-      case "org":
+      case "org": {
+        const prevPage = history.length > 0 ? history[history.length - 1].page : "home";
         return (
           <OrgPage
             orgId={nav.params.id || ""}
             onBack={goBack}
             onNavigate={navigate}
+            backLabel={prevPage === "map" ? "Карта" : prevPage === "catalog" ? "Каталог" : undefined}
           />
         );
+      }
       case "map":
         return <MapPage onNavigate={navigate} />;
       case "emergency":

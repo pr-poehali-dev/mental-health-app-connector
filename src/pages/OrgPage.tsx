@@ -7,6 +7,7 @@ interface Props {
   orgId: string;
   onBack: () => void;
   onNavigate: (page: string, params?: Record<string, string>) => void;
+  backLabel?: string;
 }
 
 const verBadge = {
@@ -36,7 +37,7 @@ function ContactRow({ icon, label, value, href }: { icon: string; label: string;
   return inner;
 }
 
-export default function OrgPage({ orgId, onBack }: Props) {
+export default function OrgPage({ orgId, onBack, backLabel }: Props) {
   const [org, setOrg] = useState<DbOrganization | null | undefined>(undefined);
 
   useEffect(() => {
@@ -93,7 +94,7 @@ export default function OrgPage({ orgId, onBack }: Props) {
             className="flex items-center gap-1.5 text-sm text-[hsl(var(--muted-foreground))] mb-5 hover:text-[hsl(var(--foreground))] transition-colors"
           >
             <Icon name="ArrowLeft" size={15} />
-            Назад
+            {backLabel ? `← ${backLabel}` : "Назад"}
           </button>
 
           <div className="flex items-start gap-4">
