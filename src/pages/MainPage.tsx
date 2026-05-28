@@ -40,7 +40,7 @@ const scenarios = [
     icon: "🎓",
     label: "Специалистам",
     desc: "Направление пациента / клиента",
-    q: "специалист",
+    q: "",
     color: "bg-rose-50 border-rose-200 hover:border-rose-400",
   },
 ];
