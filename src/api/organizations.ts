@@ -62,3 +62,14 @@ export async function updateOrganization(id: number, org: Partial<DbOrganization
 export async function deleteOrganization(id: number): Promise<void> {
   await fetch(`${BASE_URL}?id=${id}`, { method: "DELETE" });
 }
+
+export async function bulkCreateOrganizations(
+  items: Partial<DbOrganization>[]
+): Promise<{ created: number; errors: { row: number; error: string }[] }> {
+  const res = await fetch(BASE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ items }),
+  });
+  return res.json();
+}

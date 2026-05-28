@@ -26,6 +26,8 @@ def handler(event: dict, context) -> dict:
         return get_organizations(params)
     elif method == "POST":
         body = json.loads(event.get("body") or "{}")
+        if "items" in body:
+            return bulk_create_organizations(body["items"])
         return create_organization(body)
     elif method == "PUT":
         body = json.loads(event.get("body") or "{}")
@@ -168,6 +170,56 @@ def update_organization(org_id, data: dict) -> dict:
         "statusCode": 200,
         "headers": {**cors_headers(), "Content-Type": "application/json"},
         "body": json.dumps({"ok": True}, ensure_ascii=False),
+    }
+
+
+def bulk_create_organizations(items: list) -> dict:
+    if not items:
+        return {"statusCode": 400, "headers": cors_headers(), "body": json.dumps({"error": "items is empty"})}
+
+    conn = get_conn()
+    cur = conn.cursor()
+    created = 0
+    errors = []
+
+    for i, data in enumerate(items):
+        if not data.get("name", "").strip():
+            errors.append({"row": i + 1, "error": "Пустое название"})
+            continue
+        cur.execute(
+            f"""INSERT INTO {SCHEMA}.organizations
+            (number, name, category, org_type, target_group, short_description, help_types, help_format, conditions, city, address, phones, email, website_social, director, coordinates, verification_status)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+            (
+                data.get("number"),
+                data.get("name", ""),
+                data.get("category"),
+                data.get("org_type"),
+                data.get("target_group"),
+                data.get("short_description"),
+                data.get("help_types"),
+                data.get("help_format"),
+                data.get("conditions"),
+                data.get("city"),
+                data.get("address"),
+                data.get("phones"),
+                data.get("email"),
+                data.get("website_social"),
+                data.get("director"),
+                data.get("coordinates"),
+                data.get("verification_status", "pending"),
+            ),
+        )
+        created += 1
+
+    conn.commit()
+    cur.close()
+    conn.close()
+
+    return {
+        "statusCode": 201,
+        "headers": {**cors_headers(), "Content-Type": "application/json"},
+        "body": json.dumps({"created": created, "errors": errors, "ok": True}, ensure_ascii=False),
     }
 
 

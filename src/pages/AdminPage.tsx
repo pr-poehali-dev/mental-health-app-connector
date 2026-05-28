@@ -12,12 +12,13 @@ import AdminDashboard from "./admin/AdminDashboard";
 import AdminOrgList from "./admin/AdminOrgList";
 import AdminModeration from "./admin/AdminModeration";
 import AdminOrgForm from "./admin/AdminOrgForm";
+import AdminImport from "./admin/AdminImport";
 
 interface Props {
   onNavigate: (page: string, params?: Record<string, string>) => void;
 }
 
-type AdminView = "dashboard" | "list" | "edit" | "moderation";
+type AdminView = "dashboard" | "list" | "edit" | "moderation" | "import";
 
 const emptyOrg = (): Partial<DbOrganization> => ({
   name: "",
@@ -149,6 +150,7 @@ export default function AdminPage({ onNavigate }: Props) {
             { id: "dashboard", label: "Обзор", icon: "LayoutDashboard" },
             { id: "list", label: "Организации", icon: "List" },
             { id: "moderation", label: `На проверке (${stats.pending})`, icon: "CheckSquare" },
+            { id: "import", label: "Импорт", icon: "Upload" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -205,6 +207,12 @@ export default function AdminPage({ onNavigate }: Props) {
             onChange={setEditOrg}
             onSave={handleSave}
             onCancel={() => { setView("list"); setEditOrg(null); }}
+          />
+        )}
+
+        {view === "import" && (
+          <AdminImport
+            onDone={(count) => { showToast(`Загружено ${count} организаций`); loadOrgs(); setView("list"); }}
           />
         )}
       </div>
