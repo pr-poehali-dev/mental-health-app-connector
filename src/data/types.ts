@@ -76,7 +76,11 @@ export const CATEGORY_META: Record<OrgCategory, { label: string; color: string; 
 export function dbCategoryToKey(category: string | null | undefined): OrgCategory {
   const c = (category ?? "").toLowerCase();
   if (c.includes("медицин") || c.includes("санатор") || c.includes("психотерап") || c.includes("наркол")) return "healthcare";
-  if (c.includes("некоммерч") || c.includes("нко") || c.includes("благотворит") || c.includes("автономн") || c.includes("ано ") || c.includes("общественн")) return "nko";
+  // НКО — проверяется до соцзащиты, чтобы «благотворительная / социально-поддерживающая» не уходила в соц
+  if (
+    c.includes("некоммерч") || c.includes("нко") || c.includes("благотворит") ||
+    c.includes("автономн") || c.includes("общественн") || c.includes("фонд")
+  ) return "nko";
   if (
     c.includes("соц") || c.includes("дом-интернат") || c.includes("интернат") ||
     c.includes("реабилитац") || c.includes("абилитац") || c.includes("центр дневн") ||
