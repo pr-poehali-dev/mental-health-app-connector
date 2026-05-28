@@ -45,7 +45,6 @@ const verStatusLabel: Record<string, string> = {
 
 function DbOrgCard({ org, onSelect }: { org: DbOrganization; onSelect: () => void }) {
   const cat = CATEGORY_META[dbCategoryToKey(org.category, org.name)];
-
   const tags = org.target_group ? org.target_group.split(";").map(s => s.trim()).filter(Boolean).slice(0, 3) : [];
 
   return (
@@ -136,7 +135,6 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
     if (filters.search) {
       const q = filters.search.toLowerCase().trim();
 
-      // Синонимы: при поиске одного слова ищем и по связанным
       const SYNONYMS: Record<string, string[]> = {
         "нко": ["некоммерческий", "благотворит", "автономн", "общественн", "ано ", "фонд"],
         "ано": ["автономная некоммерческая", "некоммерческий"],
@@ -166,6 +164,7 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
         return terms.some((t) => haystack.includes(t));
       });
     }
+
     if (filters.region !== "Вся Россия") {
       list = list.filter((o) => (o.city ?? "").toLowerCase().includes(filters.region.toLowerCase()));
     }
@@ -181,97 +180,108 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
   }, [allOrgs, filters, sortBy]);
 
   const activeFiltersCount =
-    filters.categories.length +
     filters.ageGroups.length +
     filters.specialNeeds.length +
     filters.serviceTypes.length +
     filters.paymentTypes.length +
     (filters.region !== "Вся Россия" ? 1 : 0);
 
+  const categories = Object.entries(CATEGORY_META) as [OrgCategory, typeof CATEGORY_META[OrgCategory]][];
+
   return (
     <div className="min-h-screen animate-fade-in">
-      {/* Поиск-шапка */}
-      <div className="sticky top-0 z-20 bg-[hsl(var(--background))]/95 backdrop-blur-sm border-b border-[hsl(var(--border))] px-4 py-3">
+      {/* Шапка */}
+      <div className="sticky top-0 z-20 bg-[hsl(var(--background))]/95 backdrop-blur-sm border-b border-[hsl(var(--border))] px-4 pt-3 pb-0">
         <div className="max-w-2xl mx-auto space-y-2.5">
-          <div className="relative">
-            <Icon name="Search" size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
-            <input
-              type="search"
-              placeholder="Поиск по названию, городу, услуге..."
-              value={filters.search}
-              onChange={(e) => setFilter("search", e.target.value)}
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--terra))/30] transition"
-              autoComplete="off"
-            />
-          </div>
 
+          {/* Строка поиска */}
           <div className="flex items-center gap-2">
-            {/* Регион */}
-            <select
-              value={filters.region}
-              onChange={(e) => setFilter("region", e.target.value)}
-              className="flex-1 px-2.5 py-2 rounded-xl border border-[hsl(var(--border))] text-xs bg-white text-[hsl(var(--foreground))] focus:outline-none"
-            >
-              {REGIONS.map((r) => <option key={r}>{r}</option>)}
-            </select>
-
-            {/* Все фильтры */}
+            <div className="relative flex-1">
+              <Icon name="Search" size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[hsl(var(--muted-foreground))]" />
+              <input
+                type="search"
+                placeholder="Поиск по названию, городу, услуге..."
+                value={filters.search}
+                onChange={(e) => setFilter("search", e.target.value)}
+                className="w-full pl-9 pr-4 py-2.5 rounded-xl bg-white border border-[hsl(var(--border))] text-sm focus:outline-none focus:ring-2 focus:ring-[hsl(var(--terra))/30] transition"
+                autoComplete="off"
+              />
+            </div>
+            {/* Доп фильтры */}
             <button
               onClick={() => setFiltersOpen(!filtersOpen)}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-medium transition-colors ${
+              className={`relative flex-shrink-0 flex items-center gap-1.5 px-3 py-2.5 rounded-xl border text-xs font-medium transition-colors ${
                 activeFiltersCount > 0 || filtersOpen
                   ? "bg-[hsl(var(--terra))] text-white border-[hsl(var(--terra))]"
                   : "bg-white border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]"
               }`}
+              title="Дополнительные фильтры"
             >
-              <Icon name="SlidersHorizontal" size={13} />
-              Фильтры{activeFiltersCount > 0 && ` (${activeFiltersCount})`}
+              <Icon name="SlidersHorizontal" size={14} />
+              {activeFiltersCount > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-[hsl(var(--terra))] text-white text-[9px] font-bold flex items-center justify-center border-2 border-white">
+                  {activeFiltersCount}
+                </span>
+              )}
             </button>
-
-            {/* Сортировка */}
-            <button
-              onClick={() => setSortBy(sortBy === "name" ? "updated" : "name")}
-              className="px-2.5 py-2 rounded-xl border border-[hsl(var(--border))] bg-white text-[hsl(var(--muted-foreground))]"
-              title="Сортировка"
-            >
-              <Icon name="ArrowUpDown" size={13} />
-            </button>
-
             {/* Карта */}
             <button
               onClick={() => onNavigate("map")}
-              className="px-2.5 py-2 rounded-xl border border-[hsl(var(--border))] bg-white text-[hsl(var(--muted-foreground))]"
+              className="flex-shrink-0 px-2.5 py-2.5 rounded-xl border border-[hsl(var(--border))] bg-white text-[hsl(var(--muted-foreground))]"
               title="На карте"
             >
-              <Icon name="Map" size={13} />
+              <Icon name="Map" size={14} />
             </button>
+          </div>
+
+          {/* Быстрые фильтры — категории */}
+          <div className="flex gap-2 overflow-x-auto pb-3 scrollbar-hide -mx-4 px-4">
+            <button
+              onClick={() => setFilter("categories", [])}
+              className={`flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                filters.categories.length === 0
+                  ? "bg-[hsl(var(--foreground))] text-white border-[hsl(var(--foreground))]"
+                  : "bg-white border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--foreground))/40]"
+              }`}
+            >
+              Все
+            </button>
+            {categories.map(([key, meta]) => {
+              const active = filters.categories.includes(key);
+              return (
+                <button
+                  key={key}
+                  onClick={() => setFilter("categories", toggleArr(filters.categories, key))}
+                  className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all ${
+                    active
+                      ? `${meta.bg} ${meta.color} border-current shadow-sm`
+                      : "bg-white border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--foreground))/30]"
+                  }`}
+                >
+                  <span>{meta.icon}</span>
+                  {meta.label}
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
 
-      {/* Панель фильтров */}
+      {/* Панель дополнительных фильтров */}
       {filtersOpen && (
         <div className="bg-[hsl(var(--muted))] border-b border-[hsl(var(--border))] px-4 py-4 animate-slide-up">
           <div className="max-w-2xl mx-auto space-y-4">
 
-            {/* Категории */}
+            {/* Регион */}
             <div>
-              <p className="text-[10px] font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-2">Категория</p>
-              <div className="flex flex-wrap gap-1.5">
-                {(Object.entries(CATEGORY_META) as [OrgCategory, typeof CATEGORY_META[OrgCategory]][]).map(([key, meta]) => (
-                  <button
-                    key={key}
-                    onClick={() => setFilter("categories", toggleArr(filters.categories, key))}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border ${
-                      filters.categories.includes(key)
-                        ? `${meta.bg} ${meta.color} border-current`
-                        : "bg-white border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]"
-                    }`}
-                  >
-                    {meta.icon} {meta.label}
-                  </button>
-                ))}
-              </div>
+              <p className="text-[10px] font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-2">Регион</p>
+              <select
+                value={filters.region}
+                onChange={(e) => setFilter("region", e.target.value)}
+                className="w-full px-3 py-2 rounded-xl border border-[hsl(var(--border))] text-xs bg-white text-[hsl(var(--foreground))] focus:outline-none"
+              >
+                {REGIONS.map((r) => <option key={r}>{r}</option>)}
+              </select>
             </div>
 
             {/* Возраст */}
@@ -289,26 +299,6 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
                     }`}
                   >
                     {meta.icon} {meta.label}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Нарушения */}
-            <div>
-              <p className="text-[10px] font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-2">Особенности</p>
-              <div className="flex flex-wrap gap-1.5">
-                {(Object.entries(NEED_META) as [SpecialNeed, typeof NEED_META[SpecialNeed]][]).filter(([k]) => k !== "any").map(([key, meta]) => (
-                  <button
-                    key={key}
-                    onClick={() => setFilter("specialNeeds", toggleArr(filters.specialNeeds, key))}
-                    className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-colors border ${
-                      filters.specialNeeds.includes(key)
-                        ? "bg-[hsl(var(--terra))] text-white border-[hsl(var(--terra))]"
-                        : "bg-white border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]"
-                    }`}
-                  >
-                    {meta.short}
                   </button>
                 ))}
               </div>
@@ -356,10 +346,10 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
 
             {activeFiltersCount > 0 && (
               <button
-                onClick={() => setFilters({ search: filters.search, region: "Вся Россия", categories: [], ageGroups: [], specialNeeds: [], serviceTypes: [], paymentTypes: [] })}
+                onClick={() => setFilters({ search: filters.search, region: "Вся Россия", categories: filters.categories, ageGroups: [], specialNeeds: [], serviceTypes: [], paymentTypes: [] })}
                 className="text-xs text-[hsl(var(--terra))] hover:underline font-medium"
               >
-                Сбросить все фильтры
+                Сбросить доп. фильтры
               </button>
             )}
           </div>
@@ -372,15 +362,28 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
           <p className="text-xs text-[hsl(var(--muted-foreground))]">
             {loading ? "Загрузка..." : <>Найдено: <span className="font-semibold text-[hsl(var(--foreground))]">{filtered.length}</span></>}
           </p>
-          {activeFiltersCount > 0 && (
-            <div className="flex flex-wrap gap-1">
-              {filters.categories.map((c) => (
-                <span key={c} className="px-1.5 py-0.5 rounded bg-[hsl(var(--terra-light))] text-[hsl(var(--terra))] text-[10px] font-medium">
-                  {CATEGORY_META[c].label} ×
-                </span>
-              ))}
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {filters.categories.length > 0 && (
+              <div className="flex flex-wrap gap-1">
+                {filters.categories.map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setFilter("categories", toggleArr(filters.categories, c))}
+                    className="px-1.5 py-0.5 rounded bg-[hsl(var(--terra-light))] text-[hsl(var(--terra))] text-[10px] font-medium hover:bg-[hsl(var(--terra))/20]"
+                  >
+                    {CATEGORY_META[c].label} ×
+                  </button>
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => setSortBy(sortBy === "name" ? "updated" : "name")}
+              className="p-1.5 rounded-lg border border-[hsl(var(--border))] bg-white text-[hsl(var(--muted-foreground))]"
+              title={sortBy === "name" ? "По алфавиту" : "По дате"}
+            >
+              <Icon name="ArrowUpDown" size={12} />
+            </button>
+          </div>
         </div>
 
         {loading ? (
