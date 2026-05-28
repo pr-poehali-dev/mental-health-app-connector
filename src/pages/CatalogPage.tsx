@@ -175,7 +175,7 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
   return (
     <div className="min-h-screen animate-fade-in">
       {/* Шапка — прилипает к верху */}
-      <div className="sticky top-0 z-20 bg-[hsl(var(--background))]/95 backdrop-blur-sm border-b border-[hsl(var(--border))] px-4 pt-3 pb-3">
+      <div className="sticky top-[53px] z-20 bg-[hsl(var(--background))]/95 backdrop-blur-sm border-b border-[hsl(var(--border))] px-4 pt-3 pb-3">
         <div className="max-w-2xl mx-auto space-y-3">
 
           {/* Строка поиска + кнопки */}

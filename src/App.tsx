@@ -88,6 +88,59 @@ const App = () => {
     <TooltipProvider>
       <Toaster />
       <div className="min-h-screen bg-[hsl(var(--background))] flex flex-col">
+
+        {/* Верхняя навигация */}
+        {showBottomNav && (
+          <nav
+            className="sticky top-0 z-50 bg-white/97 backdrop-blur-lg border-b border-[hsl(var(--border))]"
+            role="navigation"
+            aria-label="Основная навигация"
+          >
+            <div className="max-w-2xl mx-auto flex items-center">
+              {NAV_ITEMS.map((item) => {
+                const isActive = nav.page === item.id;
+                const isEmergencyBtn = item.id === "emergency";
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => navigate(item.id)}
+                    aria-label={item.label}
+                    aria-current={isActive ? "page" : undefined}
+                    className={`flex-1 flex flex-col items-center gap-1 py-2.5 transition-all duration-200`}
+                  >
+                    <div
+                      className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all duration-150 ${
+                        isEmergencyBtn
+                          ? isActive ? "bg-red-100 scale-110" : "hover:bg-red-50"
+                          : isActive ? "bg-[hsl(var(--terra-light))] scale-110" : "hover:bg-[hsl(var(--muted))]"
+                      }`}
+                    >
+                      <Icon
+                        name={item.icon}
+                        size={17}
+                        className={
+                          isEmergencyBtn
+                            ? isActive ? "text-red-600" : "text-red-400"
+                            : isActive ? "text-[hsl(var(--terra))]" : "text-[hsl(var(--muted-foreground))]"
+                        }
+                      />
+                    </div>
+                    <span
+                      className={`text-[10px] font-medium leading-none ${
+                        isEmergencyBtn
+                          ? isActive ? "text-red-600" : "text-red-400"
+                          : isActive ? "text-[hsl(var(--terra))]" : "text-[hsl(var(--muted-foreground))]"
+                      }`}
+                    >
+                      {item.label}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </nav>
+        )}
+
         <main
           className={`flex-1 max-w-2xl w-full mx-auto ${showBottomNav ? "pb-20" : ""}`}
         >
