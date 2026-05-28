@@ -134,15 +134,37 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
     let list = [...allOrgs];
 
     if (filters.search) {
-      const q = filters.search.toLowerCase();
-      list = list.filter(
-        (o) =>
-          o.name.toLowerCase().includes(q) ||
-          (o.short_description ?? "").toLowerCase().includes(q) ||
-          (o.city ?? "").toLowerCase().includes(q) ||
-          (o.target_group ?? "").toLowerCase().includes(q) ||
-          (o.help_types ?? "").toLowerCase().includes(q)
-      );
+      const q = filters.search.toLowerCase().trim();
+
+      // Синонимы: при поиске одного слова ищем и по связанным
+      const SYNONYMS: Record<string, string[]> = {
+        "нко": ["некоммерческий", "благотворит", "автономн", "общественн", "ано ", "фонд"],
+        "ано": ["автономная некоммерческая", "некоммерческий"],
+        "некоммерческий": ["нко", "благотворит", "автономн", "общественн", "ано "],
+        "благотворит": ["нко", "некоммерческий", "фонд"],
+        "соцзащита": ["социального обслуживания", "социальн"],
+        "психиатр": ["психическ", "психоневрол"],
+        "наркол": ["зависим", "алкогол"],
+        "реабилитац": ["абилитац", "восстановлен"],
+      };
+
+      const extraTerms = Object.entries(SYNONYMS)
+        .filter(([key]) => q.includes(key))
+        .flatMap(([, vals]) => vals);
+      const terms = [q, ...extraTerms];
+
+      list = list.filter((o) => {
+        const haystack = [
+          o.name,
+          o.short_description ?? "",
+          o.city ?? "",
+          o.target_group ?? "",
+          o.help_types ?? "",
+          o.category ?? "",
+          o.org_type ?? "",
+        ].join(" ").toLowerCase();
+        return terms.some((t) => haystack.includes(t));
+      });
     }
     if (filters.region !== "Вся Россия") {
       list = list.filter((o) => (o.city ?? "").toLowerCase().includes(filters.region.toLowerCase()));
