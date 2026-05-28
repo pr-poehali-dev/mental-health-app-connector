@@ -8,6 +8,22 @@ import urllib.parse
 import psycopg2
 
 
+def nominatim_search(query: str):
+    encoded = urllib.parse.quote(query)
+    url = f"https://nominatim.openstreetmap.org/search?q={encoded}&format=json&limit=1&countrycodes=ru"
+    req = urllib.request.Request(url, headers={"User-Agent": "mental-health-altai-app/1.0"})
+    with urllib.request.urlopen(req, timeout=8) as resp:
+        data = json.loads(resp.read())
+    if data:
+        return float(data[0]["lat"]), float(data[0]["lon"])
+    return None
+
+
+def geocode_city(city: str):
+    clean_city = re.sub(r"^(г\.|с\.|пгт\.)\s*", "", city.strip()).strip()
+    return nominatim_search(f"{clean_city}, Алтайский край, Россия")
+
+
 def geocode_address(city: str, address: str):
     clean_city = re.sub(r"^(г\.|с\.|пгт\.)\s*", "", city.strip()).strip()
     clean_addr = address.split(";")[0].strip()
@@ -18,16 +34,7 @@ def geocode_address(city: str, address: str):
     clean_addr = clean_addr.strip().strip(",").strip()
 
     query = f"{clean_addr}, {clean_city}, Алтайский край, Россия"
-    encoded = urllib.parse.quote(query)
-    url = f"https://nominatim.openstreetmap.org/search?q={encoded}&format=json&limit=1&countrycodes=ru"
-
-    req = urllib.request.Request(url, headers={"User-Agent": "mental-health-altai-app/1.0"})
-    with urllib.request.urlopen(req, timeout=8) as resp:
-        data = json.loads(resp.read())
-
-    if data:
-        return float(data[0]["lat"]), float(data[0]["lon"])
-    return None
+    return nominatim_search(query)
 
 
 def handler(event: dict, context) -> dict:
@@ -42,7 +49,14 @@ def handler(event: dict, context) -> dict:
     cur = conn.cursor()
     schema = os.environ.get("MAIN_DB_SCHEMA", "public")
 
-    cur.execute(f"SELECT id, name, city, address FROM {schema}.organizations ORDER BY id LIMIT {limit} OFFSET {offset}")
+    # Берём только те, у кого нет валидных координат
+    cur.execute(f"""
+        SELECT id, name, city, address FROM {schema}.organizations
+        WHERE coordinates IS NULL
+           OR coordinates IN ('уточнить', 'Требуется геокодирование', '')
+           OR coordinates NOT LIKE '%,%'
+        ORDER BY id LIMIT {limit} OFFSET {offset}
+    """)
     rows = cur.fetchall()
 
     updated = []
@@ -54,6 +68,9 @@ def handler(event: dict, context) -> dict:
             continue
         try:
             result = geocode_address(city, address)
+            if not result:
+                # Fallback: геокодируем только по городу
+                result = geocode_city(city)
             if result:
                 lat, lon = result
                 coords = f"{lat:.6f},{lon:.6f}"

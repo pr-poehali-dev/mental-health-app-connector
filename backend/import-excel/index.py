@@ -32,6 +32,41 @@ def handler(event: dict, context) -> dict:
         files = [o["Key"] for o in resp.get("Contents", [])]
         return {"statusCode": 200, "headers": cors(), "body": json.dumps({"files": files})}
 
+    # Режим inspect — показать заголовки и первые строки файла
+    if params.get("mode") == "inspect":
+        file_key = params.get("file")
+        if not file_key:
+            return {"statusCode": 400, "headers": cors(), "body": json.dumps({"error": "Укажи ?file=...&mode=inspect"})}
+        s3 = get_s3()
+        obj = s3.get_object(Bucket="files", Key=file_key)
+        data = obj["Body"].read()
+        wb = openpyxl.load_workbook(io.BytesIO(data), data_only=True)
+        sheets = wb.sheetnames
+        result = {}
+        for sheet_name in sheets:
+            ws = wb[sheet_name]
+            # Ищем первую непустую строку (до 20-й)
+            first_data_row = None
+            for row_idx in range(1, 21):
+                row_vals = [ws.cell(row=row_idx, column=c).value for c in range(1, ws.max_column + 1)]
+                if any(v is not None for v in row_vals):
+                    first_data_row = row_idx
+                    break
+            headers_raw = []
+            preview_rows = []
+            if first_data_row:
+                headers_raw = [str(ws.cell(row=first_data_row, column=c).value or "").strip() for c in range(1, ws.max_column + 1)]
+                for row_idx in range(first_data_row + 1, first_data_row + 4):
+                    preview_rows.append([str(ws.cell(row=row_idx, column=c).value or "") for c in range(1, ws.max_column + 1)])
+            result[sheet_name] = {
+                "max_row": ws.max_row,
+                "max_col": ws.max_column,
+                "first_data_row": first_data_row,
+                "headers": headers_raw,
+                "preview": preview_rows,
+            }
+        return {"statusCode": 200, "headers": cors(), "body": json.dumps(result, ensure_ascii=False)}
+
     # Режим import — читаем конкретный файл
     file_key = params.get("file")
     if not file_key:
@@ -42,46 +77,29 @@ def handler(event: dict, context) -> dict:
     data = obj["Body"].read()
 
     wb = openpyxl.load_workbook(io.BytesIO(data), data_only=True)
-    ws = wb.active
 
-    # Читаем заголовки из первой строки
-    headers = []
-    for cell in ws[1]:
-        val = str(cell.value or "").strip().lower()
-        headers.append(val)
-
-    # Маппинг заголовков → поля БД
     FIELD_MAP = {
-        "название": "name", "наименование": "name", "name": "name",
-        "категория": "category", "category": "category",
-        "тип организации": "org_type", "тип": "org_type", "org_type": "org_type",
-        "целевая группа": "target_group", "для кого": "target_group",
-        "описание": "short_description", "краткое описание": "short_description",
-        "виды помощи": "help_types", "помощь": "help_types",
-        "формат": "help_format", "формат помощи": "help_format",
-        "условия": "conditions",
-        "город": "city", "населённый пункт": "city", "нп": "city",
+        "организация": "name", "наименование": "name", "название": "name",
+        "категория": "category",
+        "тип организации": "org_type",
+        "для кого": "target_group", "целевая группа": "target_group",
+        "краткое описание": "short_description", "описание": "short_description",
+        "виды помощи": "help_types",
+        "формат помощи": "help_format", "формат": "help_format",
+        "условия получения": "conditions", "условия": "conditions",
+        "населённый пункт": "city", "город": "city",
         "адрес": "address",
-        "телефон": "phones", "телефоны": "phones", "phones": "phones",
-        "email": "email", "эл. почта": "email", "почта": "email",
-        "сайт": "website_social", "сайт / соцсети": "website_social",
-        "руководитель": "director", "директор": "director",
+        "телефоны": "phones", "телефон": "phones",
+        "email": "email",
+        "сайт / соцсети": "website_social", "сайт": "website_social",
+        "руководитель": "director",
         "координаты": "coordinates",
         "статус": "verification_status",
-        "номер": "number", "№": "number",
+        "№": "number",
     }
-
-    col_map = {}
-    for i, h in enumerate(headers):
-        for key, field in FIELD_MAP.items():
-            if key in h:
-                col_map[i] = field
-                break
 
     conn = psycopg2.connect(os.environ["DATABASE_URL"])
     cur = conn.cursor()
-
-    # Получаем существующие названия для дедупликации
     cur.execute(f"SELECT LOWER(TRIM(name)) FROM {SCHEMA}.organizations")
     existing_names = set(r[0] for r in cur.fetchall())
 
@@ -90,57 +108,80 @@ def handler(event: dict, context) -> dict:
     errors = []
     preview = []
 
-    for row_idx, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
-        if not any(row):
+    for sheet_name in wb.sheetnames:
+        ws = wb[sheet_name]
+
+        # Найти строку с заголовками (первая непустая в первых 10 строках)
+        first_data_row = None
+        for row_idx in range(1, 11):
+            row_vals = [ws.cell(row=row_idx, column=c).value for c in range(1, ws.max_column + 1)]
+            if any(v is not None for v in row_vals):
+                first_data_row = row_idx
+                break
+        if not first_data_row:
             continue
 
-        record = {}
-        for col_idx, val in enumerate(row):
-            if col_idx in col_map and val is not None:
-                record[col_map[col_idx]] = str(val).strip() if val != "" else None
+        headers = [str(ws.cell(row=first_data_row, column=c).value or "").strip().lower() for c in range(1, ws.max_column + 1)]
+        col_map = {}
+        for i, h in enumerate(headers):
+            for key, field in FIELD_MAP.items():
+                if key in h:
+                    col_map[i] = field
+                    break
 
-        name = record.get("name", "").strip()
-        if not name:
-            continue
+        if "name" not in col_map.values():
+            continue  # Лист без колонки "Организация" — пропускаем
 
-        # Пропускаем дубли
-        if name.lower() in existing_names:
-            skipped += 1
-            continue
+        for row_idx, row in enumerate(ws.iter_rows(min_row=first_data_row + 1, values_only=True), start=first_data_row + 1):
+            if not any(row):
+                continue
 
-        try:
-            cur.execute(
-                f"""INSERT INTO {SCHEMA}.organizations
-                (number, name, category, org_type, target_group, short_description,
-                 help_types, help_format, conditions, city, address, phones,
-                 email, website_social, director, coordinates, verification_status)
-                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
-                (
-                    record.get("number"),
-                    name,
-                    record.get("category"),
-                    record.get("org_type"),
-                    record.get("target_group"),
-                    record.get("short_description"),
-                    record.get("help_types"),
-                    record.get("help_format"),
-                    record.get("conditions"),
-                    record.get("city"),
-                    record.get("address"),
-                    record.get("phones"),
-                    record.get("email"),
-                    record.get("website_social"),
-                    record.get("director"),
-                    record.get("coordinates"),
-                    record.get("verification_status", "pending"),
-                ),
-            )
-            existing_names.add(name.lower())
-            inserted += 1
-            if len(preview) < 5:
-                preview.append({"name": name, "city": record.get("city")})
-        except Exception as e:
-            errors.append({"row": row_idx, "name": name, "error": str(e)})
+            record = {}
+            for col_idx, val in enumerate(row):
+                if col_idx in col_map and val is not None:
+                    record[col_map[col_idx]] = str(val).strip() if val != "" else None
+
+            name = record.get("name", "").strip()
+            if not name:
+                continue
+
+            if name.lower() in existing_names:
+                skipped += 1
+                continue
+
+            try:
+                cur.execute(
+                    f"""INSERT INTO {SCHEMA}.organizations
+                    (number, name, category, org_type, target_group, short_description,
+                     help_types, help_format, conditions, city, address, phones,
+                     email, website_social, director, coordinates, verification_status)
+                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                    (
+                        record.get("number"),
+                        name,
+                        record.get("category"),
+                        record.get("org_type"),
+                        record.get("target_group"),
+                        record.get("short_description"),
+                        record.get("help_types"),
+                        record.get("help_format"),
+                        record.get("conditions"),
+                        record.get("city"),
+                        record.get("address"),
+                        record.get("phones"),
+                        record.get("email"),
+                        record.get("website_social"),
+                        record.get("director"),
+                        record.get("coordinates"),
+                        record.get("verification_status", "pending"),
+                    ),
+                )
+                existing_names.add(name.lower())
+                inserted += 1
+                if len(preview) < 5:
+                    preview.append({"name": name, "city": record.get("city")})
+            except Exception as e:
+                errors.append({"row": row_idx, "name": name, "error": str(e)})
 
     conn.commit()
     cur.close()
