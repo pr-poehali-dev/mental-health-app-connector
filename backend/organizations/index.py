@@ -28,6 +28,8 @@ def handler(event: dict, context) -> dict:
         body = json.loads(event.get("body") or "{}")
         if "items" in body:
             return bulk_create_organizations(body["items"])
+        if "delete_from_id" in body:
+            return delete_from_id(int(body["delete_from_id"]))
         return create_organization(body)
     elif method == "PUT":
         body = json.loads(event.get("body") or "{}")
@@ -223,13 +225,33 @@ def bulk_create_organizations(items: list) -> dict:
     }
 
 
+def delete_from_id(min_id: int) -> dict:
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(f"DELETE FROM {SCHEMA}.organizations WHERE id >= %s", (min_id,))
+    deleted = cur.rowcount
+    conn.commit()
+    cur.close()
+    conn.close()
+    return {"statusCode": 200, "headers": {**cors_headers(), "Content-Type": "application/json"}, "body": json.dumps({"ok": True, "deleted": deleted})}
+
+
 def delete_organization(org_id) -> dict:
     if not org_id:
         return {"statusCode": 400, "headers": cors_headers(), "body": json.dumps({"error": "id required"})}
 
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute(f"DELETE FROM {SCHEMA}.organizations WHERE id = %s", (org_id,))
+
+    # Поддержка массового удаления: id=24+ (все с id больше числа)
+    if str(org_id).endswith("+"):
+        min_id = int(str(org_id)[:-1])
+        cur.execute(f"DELETE FROM {SCHEMA}.organizations WHERE id >= %s", (min_id,))
+        deleted = cur.rowcount
+    else:
+        cur.execute(f"DELETE FROM {SCHEMA}.organizations WHERE id = %s", (org_id,))
+        deleted = cur.rowcount
+
     conn.commit()
     cur.close()
     conn.close()
@@ -237,5 +259,5 @@ def delete_organization(org_id) -> dict:
     return {
         "statusCode": 200,
         "headers": {**cors_headers(), "Content-Type": "application/json"},
-        "body": json.dumps({"ok": True}, ensure_ascii=False),
+        "body": json.dumps({"ok": True, "deleted": deleted}, ensure_ascii=False),
     }

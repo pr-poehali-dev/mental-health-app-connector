@@ -108,80 +108,75 @@ def handler(event: dict, context) -> dict:
     errors = []
     preview = []
 
-    for sheet_name in wb.sheetnames:
-        ws = wb[sheet_name]
+    # Читаем только первый лист
+    ws = wb[wb.sheetnames[0]]
 
-        # Найти строку с заголовками (первая непустая в первых 10 строках)
-        first_data_row = None
-        for row_idx in range(1, 11):
-            row_vals = [ws.cell(row=row_idx, column=c).value for c in range(1, ws.max_column + 1)]
-            if any(v is not None for v in row_vals):
-                first_data_row = row_idx
+    # Найти строку с заголовками (первая непустая в первых 10 строках)
+    first_data_row = 1
+    for row_idx in range(1, 11):
+        row_vals = [ws.cell(row=row_idx, column=c).value for c in range(1, ws.max_column + 1)]
+        if any(v is not None for v in row_vals):
+            first_data_row = row_idx
+            break
+
+    headers = [str(ws.cell(row=first_data_row, column=c).value or "").strip().lower() for c in range(1, ws.max_column + 1)]
+    col_map = {}
+    for i, h in enumerate(headers):
+        for key, field in FIELD_MAP.items():
+            if key in h:
+                col_map[i] = field
                 break
-        if not first_data_row:
+
+    for row_idx, row in enumerate(ws.iter_rows(min_row=first_data_row + 1, values_only=True), start=first_data_row + 1):
+        if not any(row):
             continue
 
-        headers = [str(ws.cell(row=first_data_row, column=c).value or "").strip().lower() for c in range(1, ws.max_column + 1)]
-        col_map = {}
-        for i, h in enumerate(headers):
-            for key, field in FIELD_MAP.items():
-                if key in h:
-                    col_map[i] = field
-                    break
+        record = {}
+        for col_idx, val in enumerate(row):
+            if col_idx in col_map and val is not None:
+                record[col_map[col_idx]] = str(val).strip() if val != "" else None
 
-        if "name" not in col_map.values():
-            continue  # Лист без колонки "Организация" — пропускаем
+        name = record.get("name", "").strip()
+        if not name:
+            continue
 
-        for row_idx, row in enumerate(ws.iter_rows(min_row=first_data_row + 1, values_only=True), start=first_data_row + 1):
-            if not any(row):
-                continue
+        if name.lower() in existing_names:
+            skipped += 1
+            continue
 
-            record = {}
-            for col_idx, val in enumerate(row):
-                if col_idx in col_map and val is not None:
-                    record[col_map[col_idx]] = str(val).strip() if val != "" else None
-
-            name = record.get("name", "").strip()
-            if not name:
-                continue
-
-            if name.lower() in existing_names:
-                skipped += 1
-                continue
-
-            try:
-                cur.execute(
-                    f"""INSERT INTO {SCHEMA}.organizations
-                    (number, name, category, org_type, target_group, short_description,
-                     help_types, help_format, conditions, city, address, phones,
-                     email, website_social, director, coordinates, verification_status)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
-                    (
-                        record.get("number"),
-                        name,
-                        record.get("category"),
-                        record.get("org_type"),
-                        record.get("target_group"),
-                        record.get("short_description"),
-                        record.get("help_types"),
-                        record.get("help_format"),
-                        record.get("conditions"),
-                        record.get("city"),
-                        record.get("address"),
-                        record.get("phones"),
-                        record.get("email"),
-                        record.get("website_social"),
-                        record.get("director"),
-                        record.get("coordinates"),
-                        record.get("verification_status", "pending"),
-                    ),
-                )
-                existing_names.add(name.lower())
-                inserted += 1
-                if len(preview) < 5:
-                    preview.append({"name": name, "city": record.get("city")})
-            except Exception as e:
-                errors.append({"row": row_idx, "name": name, "error": str(e)})
+        try:
+            cur.execute(
+                f"""INSERT INTO {SCHEMA}.organizations
+                (number, name, category, org_type, target_group, short_description,
+                 help_types, help_format, conditions, city, address, phones,
+                 email, website_social, director, coordinates, verification_status)
+                VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+                (
+                    record.get("number"),
+                    name,
+                    record.get("category"),
+                    record.get("org_type"),
+                    record.get("target_group"),
+                    record.get("short_description"),
+                    record.get("help_types"),
+                    record.get("help_format"),
+                    record.get("conditions"),
+                    record.get("city"),
+                    record.get("address"),
+                    record.get("phones"),
+                    record.get("email"),
+                    record.get("website_social"),
+                    record.get("director"),
+                    record.get("coordinates"),
+                    record.get("verification_status", "pending"),
+                ),
+            )
+            existing_names.add(name.lower())
+            inserted += 1
+            if len(preview) < 5:
+                preview.append({"name": name, "city": record.get("city")})
+        except Exception as e:
+            errors.append({"row": row_idx, "name": name, "error": str(e)})
 
     conn.commit()
     cur.close()
