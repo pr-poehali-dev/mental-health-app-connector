@@ -175,7 +175,7 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
   return (
     <div className="min-h-screen animate-fade-in">
       {/* Шапка — прилипает к верху */}
-      <div className="sticky top-0 z-20 bg-[hsl(var(--background))]/95 backdrop-blur-sm border-b border-[hsl(var(--border))] px-4 pt-3 pb-0">
+      <div className="sticky top-0 z-20 bg-[hsl(var(--background))]/95 backdrop-blur-sm border-b border-[hsl(var(--border))] px-4 pt-3 pb-3">
         <div className="max-w-2xl mx-auto space-y-3">
 
           {/* Строка поиска + кнопки */}
@@ -191,8 +191,6 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
                 autoComplete="off"
               />
             </div>
-
-            {/* Доп. фильтры */}
             <button
               onClick={() => setFiltersOpen(!filtersOpen)}
               className={`relative flex-shrink-0 flex items-center justify-center w-11 h-11 rounded-xl border transition-colors ${
@@ -209,8 +207,6 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
                 </span>
               )}
             </button>
-
-            {/* На карте */}
             <button
               onClick={() => onNavigate("map")}
               className="flex-shrink-0 flex items-center justify-center w-11 h-11 rounded-xl border border-[hsl(var(--border))] bg-white text-[hsl(var(--muted-foreground))]"
@@ -220,44 +216,44 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
             </button>
           </div>
 
-          {/* Категории — горизонтальный скролл */}
-          <div
-            className="flex gap-2 overflow-x-auto pb-3"
-            style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
-          >
-            <button
-              onClick={() => setFilter("categories", [])}
-              className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold border transition-all ${
-                filters.categories.length === 0
-                  ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] border-[hsl(var(--foreground))]"
-                  : "bg-white border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--foreground))/40]"
-              }`}
-            >
-              Все
-            </button>
-            {categories.map(([key, meta]) => {
-              const active = filters.categories.includes(key);
-              return (
-                <button
-                  key={key}
-                  onClick={() => setFilter("categories", toggleArr(filters.categories, key))}
-                  className={`flex-shrink-0 flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium border transition-all whitespace-nowrap ${
-                    active
-                      ? `${meta.bg} ${meta.color} border-current shadow-sm`
-                      : "bg-white border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--foreground))/30]"
-                  }`}
-                >
-                  <span className="text-base">{meta.icon}</span>
-                  {meta.label}
-                </button>
-              );
-            })}
+          {/* Категории — всегда видны */}
+          <div>
+            <p className="text-[10px] font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-2">Категория</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                onClick={() => setFilter("categories", [])}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border transition-all ${
+                  filters.categories.length === 0
+                    ? "bg-[hsl(var(--foreground))] text-[hsl(var(--background))] border-[hsl(var(--foreground))]"
+                    : "bg-white border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--foreground))/40]"
+                }`}
+              >
+                Все
+              </button>
+              {categories.map(([key, meta]) => {
+                const active = filters.categories.includes(key);
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setFilter("categories", toggleArr(filters.categories, key))}
+                    className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border transition-all ${
+                      active
+                        ? `${meta.bg} ${meta.color} border-current shadow-sm`
+                        : "bg-white border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))] hover:border-[hsl(var(--foreground))/30]"
+                    }`}
+                  >
+                    <span>{meta.icon}</span>
+                    {meta.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
 
         </div>
       </div>
 
-      {/* Панель доп. фильтров */}
+      {/* Панель доп. фильтров (регион, возраст и т.д.) */}
       {filtersOpen && (
         <div className="bg-[hsl(var(--muted))] border-b border-[hsl(var(--border))] px-4 py-4 animate-slide-up">
           <div className="max-w-2xl mx-auto space-y-4">
