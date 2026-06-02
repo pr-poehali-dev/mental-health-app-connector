@@ -9,8 +9,9 @@ import OrgPage from "@/pages/OrgPage";
 import MapPage from "@/pages/MapPage";
 import EmergencyHelpPage from "@/pages/EmergencyHelpPage";
 import AdminPage from "@/pages/AdminPage";
+import MaterialsPage from "@/pages/MaterialsPage";
 
-type Page = "home" | "catalog" | "org" | "map" | "emergency" | "admin";
+type Page = "home" | "catalog" | "org" | "map" | "emergency" | "admin" | "materials";
 
 interface NavState {
   page: Page;
@@ -20,6 +21,7 @@ interface NavState {
 const NAV_ITEMS: { id: Page; label: string; icon: string }[] = [
   { id: "home", label: "Главная", icon: "Home" },
   { id: "catalog", label: "Каталог", icon: "Search" },
+  { id: "materials", label: "Материалы", icon: "BookHeart" },
   { id: "map", label: "Карта", icon: "Map" },
   { id: "emergency", label: "Помощь", icon: "Phone" },
 ];
@@ -77,6 +79,8 @@ const App = () => {
         return <MapPage onNavigate={navigate} />;
       case "emergency":
         return <EmergencyHelpPage onNavigate={navigate} />;
+      case "materials":
+        return <MaterialsPage onNavigate={navigate} />;
       case "admin":
         return <AdminPage onNavigate={navigate} />;
       default:
@@ -106,7 +110,7 @@ const App = () => {
                     onClick={() => navigate(item.id)}
                     aria-label={item.label}
                     aria-current={isActive ? "page" : undefined}
-                    className={`flex-1 flex flex-col items-center gap-1 py-2.5 transition-all duration-200`}
+                    className="flex-1 flex flex-col items-center gap-1 py-2.5 transition-all duration-200"
                   >
                     <div
                       className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all duration-150 ${

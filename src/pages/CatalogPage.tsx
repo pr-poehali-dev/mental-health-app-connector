@@ -43,15 +43,35 @@ const verStatusLabel: Record<string, string> = {
   outdated: "Устарело",
 };
 
+function useSavedOrgs() {
+  const KEY = "saved_items";
+  const load = (): { orgs: number[]; materials: number[] } => {
+    try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { return { orgs: [], materials: [] }; }
+  };
+  const [saved, setSaved] = useState(load);
+
+  const toggleOrg = (id: number) => {
+    setSaved((prev) => {
+      const orgs = prev.orgs ?? [];
+      const next = orgs.includes(id) ? orgs.filter((x) => x !== id) : [...orgs, id];
+      const result = { ...prev, orgs: next };
+      localStorage.setItem(KEY, JSON.stringify(result));
+      return result;
+    });
+  };
+
+  const isSaved = (id: number) => (saved.orgs ?? []).includes(id);
+  return { toggleOrg, isSaved };
+}
+
 function DbOrgCard({ org, onSelect }: { org: DbOrganization; onSelect: () => void }) {
   const cat = CATEGORY_META[dbCategoryToKey(org.category, org.name)];
   const tags = org.target_group ? org.target_group.split(";").map(s => s.trim()).filter(Boolean).slice(0, 3) : [];
+  const { toggleOrg, isSaved } = useSavedOrgs();
+  const saved = isSaved(org.id);
 
   return (
-    <button
-      onClick={onSelect}
-      className="w-full bg-white rounded-2xl border border-[hsl(var(--border))] p-4 text-left card-hover animate-slide-up"
-    >
+    <div className="bg-white rounded-2xl border border-[hsl(var(--border))] p-4 animate-slide-up">
       <div className="flex items-start gap-3 mb-3">
         <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0 ${cat.bg}`}>
           {cat.icon}
@@ -62,38 +82,46 @@ function DbOrgCard({ org, onSelect }: { org: DbOrganization; onSelect: () => voi
             {org.category ?? cat.label}
           </span>
         </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); toggleOrg(org.id); }}
+          className="flex-shrink-0 p-1.5 -mt-1 -mr-1"
+        >
+          <Icon name="Heart" size={16} className={saved ? "text-rose-500 fill-rose-500" : "text-[hsl(var(--muted-foreground))]"} />
+        </button>
       </div>
 
-      {org.short_description && (
-        <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed mb-3 line-clamp-2">
-          {org.short_description}
-        </p>
-      )}
+      <button onClick={onSelect} className="w-full text-left">
+        {org.short_description && (
+          <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed mb-3 line-clamp-2">
+            {org.short_description}
+          </p>
+        )}
 
-      {tags.length > 0 && (
-        <div className="flex flex-wrap gap-1.5 mb-3">
-          {tags.map((t) => (
-            <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
-              {t}
+        {tags.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {tags.map((t) => (
+              <span key={t} className="text-[10px] px-2 py-0.5 rounded-full bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))]">
+                {t}
+              </span>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-center justify-between">
+          {org.city && (
+            <span className="flex items-center gap-1 text-[10px] text-[hsl(var(--muted-foreground))]">
+              <Icon name="MapPin" size={10} />
+              {org.city}
             </span>
-          ))}
+          )}
+          {org.verification_status && (
+            <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${verStatusColor[org.verification_status] ?? ""}`}>
+              {verStatusLabel[org.verification_status] ?? org.verification_status}
+            </span>
+          )}
         </div>
-      )}
-
-      <div className="flex items-center justify-between">
-        {org.city && (
-          <span className="flex items-center gap-1 text-[10px] text-[hsl(var(--muted-foreground))]">
-            <Icon name="MapPin" size={10} />
-            {org.city}
-          </span>
-        )}
-        {org.verification_status && (
-          <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full ${verStatusColor[org.verification_status] ?? ""}`}>
-            {verStatusLabel[org.verification_status] ?? org.verification_status}
-          </span>
-        )}
-      </div>
-    </button>
+      </button>
+    </div>
   );
 }
 
