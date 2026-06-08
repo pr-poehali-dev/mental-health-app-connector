@@ -160,22 +160,16 @@ export default function MainPage({ onNavigate }: Props) {
             </button>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            {categories.map(([key, meta]) => {
-              const count = orgs.filter((o) => dbCategoryToKey(o.category, o.name) === key).length;
-              return (
-                <button
-                  key={key}
-                  onClick={() => onNavigate("catalog", { category: key })}
-                  className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all duration-150 card-hover ${meta.bg}`}
-                >
-                  <span className="text-xl flex-shrink-0">{meta.icon}</span>
-                  <div>
-                    <div className={`font-semibold text-xs ${meta.color}`}>{meta.label}</div>
-                    <div className="text-[10px] text-[hsl(var(--muted-foreground))] mt-0.5">{count} {count === 1 ? "организация" : count < 5 ? "организации" : "организаций"}</div>
-                  </div>
-                </button>
-              );
-            })}
+            {categories.map(([key, meta]) => (
+              <button
+                key={key}
+                onClick={() => onNavigate("catalog", { category: key })}
+                className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all duration-150 card-hover ${meta.bg}`}
+              >
+                <span className="text-xl flex-shrink-0">{meta.icon}</span>
+                <div className={`font-semibold text-xs ${meta.color}`}>{meta.label}</div>
+              </button>
+            ))}
           </div>
         </section>
 
