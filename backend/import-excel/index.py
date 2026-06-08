@@ -107,6 +107,8 @@ def handler(event: dict, context) -> dict:
         "сайт / соцсети": "website_social", "сайт": "website_social",
         "руководитель": "director",
         "координаты": "coordinates",
+        "широта": "lat",
+        "долгота": "lng",
         "статус": "verification_status",
         "№": "number",
     }
@@ -149,6 +151,12 @@ def handler(event: dict, context) -> dict:
             if col_idx in col_map and val is not None:
                 record[col_map[col_idx]] = str(val).strip() if val != "" else None
 
+        # Объединяем широту и долготу в координаты
+        lat = record.pop("lat", None)
+        lng = record.pop("lng", None)
+        if lat and lng and not record.get("coordinates"):
+            record["coordinates"] = f"{lat.strip()},{lng.strip()}"
+
         name = record.get("name", "").strip()
         if not name:
             continue
@@ -181,7 +189,7 @@ def handler(event: dict, context) -> dict:
                     record.get("website_social"),
                     record.get("director"),
                     record.get("coordinates"),
-                    record.get("verification_status", "pending"),
+                    record.get("verification_status", "verified"),
                 ),
             )
             existing_names.add(name.lower())
