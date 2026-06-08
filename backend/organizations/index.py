@@ -23,6 +23,8 @@ def handler(event: dict, context) -> dict:
     params = event.get("queryStringParameters") or {}
 
     if method == "GET":
+        if params.get("id"):
+            return get_organization_by_id(params["id"])
         return get_organizations(params)
     elif method == "POST":
         body = json.loads(event.get("body") or "{}")
@@ -101,6 +103,30 @@ def get_organizations(params: dict) -> dict:
         "statusCode": 200,
         "headers": {**cors_headers(), "Content-Type": "application/json"},
         "body": json.dumps({"organizations": rows, "total": total, "limit": limit, "offset": offset}, ensure_ascii=False),
+    }
+
+
+def get_organization_by_id(org_id: str) -> dict:
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        f"SELECT id, number, name, category, org_type, target_group, short_description, help_types, help_format, conditions, city, address, phones, email, website_social, director, coordinates, verification_status, verified_at, created_at, updated_at FROM {SCHEMA}.organizations WHERE id = %s",
+        (org_id,),
+    )
+    row = cur.fetchone()
+    cur.close()
+    conn.close()
+    if not row:
+        return {"statusCode": 404, "headers": cors_headers(), "body": json.dumps({"error": "not found"})}
+    cols = ["id", "number", "name", "category", "org_type", "target_group", "short_description", "help_types", "help_format", "conditions", "city", "address", "phones", "email", "website_social", "director", "coordinates", "verification_status", "verified_at", "created_at", "updated_at"]
+    obj = dict(zip(cols, row))
+    for k, v in obj.items():
+        if hasattr(v, "isoformat"):
+            obj[k] = v.isoformat()
+    return {
+        "statusCode": 200,
+        "headers": {**cors_headers(), "Content-Type": "application/json"},
+        "body": json.dumps({"organization": obj}, ensure_ascii=False),
     }
 
 

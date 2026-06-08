@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
-import { fetchOrganizations, type DbOrganization } from "@/api/organizations";
+import { fetchOrganizationById, type DbOrganization } from "@/api/organizations";
 import { CATEGORY_META, dbCategoryToKey } from "@/data/types";
 
 interface Props {
@@ -41,9 +41,8 @@ export default function OrgPage({ orgId, onBack, backLabel }: Props) {
   const [org, setOrg] = useState<DbOrganization | null | undefined>(undefined);
 
   useEffect(() => {
-    fetchOrganizations().then((list) => {
-      const found = list.find((o) => String(o.id) === String(orgId));
-      setOrg(found ?? null);
+    fetchOrganizationById(orgId).then((found) => {
+      setOrg(found);
     });
   }, [orgId]);
 
