@@ -14,12 +14,13 @@ import AdminModeration from "./admin/AdminModeration";
 import AdminOrgForm from "./admin/AdminOrgForm";
 import AdminImport from "./admin/AdminImport";
 import AdminMaterials from "./admin/AdminMaterials";
+import AdminCheckDue from "./admin/AdminCheckDue";
 
 interface Props {
   onNavigate: (page: string, params?: Record<string, string>) => void;
 }
 
-type AdminView = "dashboard" | "list" | "edit" | "moderation" | "import" | "materials";
+type AdminView = "dashboard" | "list" | "edit" | "moderation" | "import" | "materials" | "checkdue";
 
 const emptyOrg = (): Partial<DbOrganization> => ({
   name: "",
@@ -151,6 +152,7 @@ export default function AdminPage({ onNavigate }: Props) {
             { id: "dashboard", label: "Обзор", icon: "LayoutDashboard" },
             { id: "list", label: "Организации", icon: "List" },
             { id: "moderation", label: `На проверке (${stats.pending})`, icon: "CheckSquare" },
+            { id: "checkdue", label: "Актуальность", icon: "CalendarClock" },
             { id: "import", label: "Импорт", icon: "Upload" },
             { id: "materials", label: "Материалы", icon: "BookHeart" },
           ].map((tab) => (
@@ -210,6 +212,10 @@ export default function AdminPage({ onNavigate }: Props) {
             onSave={handleSave}
             onCancel={() => { setView("list"); setEditOrg(null); }}
           />
+        )}
+
+        {view === "checkdue" && (
+          <AdminCheckDue onVerified={() => showToast("Проверка подтверждена, следующая через 5 месяцев")} />
         )}
 
         {view === "import" && (

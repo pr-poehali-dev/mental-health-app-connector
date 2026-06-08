@@ -96,6 +96,23 @@ export async function fetchStats(): Promise<{ total: number; verified: number; c
   return res.json();
 }
 
+export interface DueOrganization {
+  id: number;
+  name: string;
+  category: string | null;
+  city: string | null;
+  phones: string | null;
+  email: string | null;
+  verification_status: string;
+  verified_at: string | null;
+  next_check_at: string | null;
+}
+
+export async function fetchDueForCheck(): Promise<{ organizations: DueOrganization[]; total: number }> {
+  const res = await fetch(`${BASE_URL}?mode=due`);
+  return res.json();
+}
+
 export async function bulkCreateOrganizations(
   items: Partial<DbOrganization>[]
 ): Promise<{ created: number; errors: { row: number; error: string }[] }> {

@@ -27,6 +27,8 @@ def handler(event: dict, context) -> dict:
             return get_organization_by_id(params["id"])
         if params.get("mode") == "stats":
             return get_stats()
+        if params.get("mode") == "due":
+            return get_due_for_check()
         return get_organizations(params)
     elif method == "POST":
         body = json.loads(event.get("body") or "{}")
@@ -122,6 +124,35 @@ def get_stats() -> dict:
     }
 
 
+def get_due_for_check() -> dict:
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        f"""SELECT id, name, category, city, phones, email, verification_status, verified_at, next_check_at
+            FROM {SCHEMA}.organizations
+            WHERE next_check_at IS NULL OR next_check_at <= NOW()
+            ORDER BY next_check_at ASC NULLS FIRST
+            LIMIT 500"""
+    )
+    cols = ["id", "name", "category", "city", "phones", "email", "verification_status", "verified_at", "next_check_at"]
+    rows = []
+    for row in cur.fetchall():
+        obj = dict(zip(cols, row))
+        for k, v in obj.items():
+            if hasattr(v, "isoformat"):
+                obj[k] = v.isoformat()
+        rows.append(obj)
+    cur.execute(f"SELECT COUNT(*) FROM {SCHEMA}.organizations WHERE next_check_at IS NULL OR next_check_at <= NOW()")
+    total = cur.fetchone()[0]
+    cur.close()
+    conn.close()
+    return {
+        "statusCode": 200,
+        "headers": {**cors_headers(), "Content-Type": "application/json"},
+        "body": json.dumps({"organizations": rows, "total": total}, ensure_ascii=False),
+    }
+
+
 def get_organization_by_id(org_id: str) -> dict:
     conn = get_conn()
     cur = conn.cursor()
@@ -209,6 +240,9 @@ def update_organization(org_id, data: dict) -> dict:
         return {"statusCode": 400, "headers": cors_headers(), "body": json.dumps({"error": "no fields to update"})}
 
     set_parts.append("updated_at = NOW()")
+    # При подтверждении проверки — сдвигаем next_check_at на 5 месяцев
+    if data.get("verification_status") == "verified" or data.get("verified_at"):
+        set_parts.append("next_check_at = NOW() + INTERVAL '5 months'")
     values.append(org_id)
 
     cur.execute(
