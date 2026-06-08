@@ -3,6 +3,86 @@ import Icon from "@/components/ui/icon";
 import { fetchOrganizationById, type DbOrganization } from "@/api/organizations";
 import { CATEGORY_META, dbCategoryToKey } from "@/data/types";
 
+const REPORT_URL = "https://functions.poehali.dev/eadd00f4-60fa-4bbc-a178-37e43108399b";
+
+const ERROR_TYPES = [
+  "Неверный телефон или email",
+  "Неверный адрес",
+  "Организация не работает",
+  "Устаревшее описание",
+  "Другое",
+];
+
+function ReportErrorForm({ org, onClose }: { org: DbOrganization; onClose: () => void }) {
+  const [errorType, setErrorType] = useState("");
+  const [comment, setComment] = useState("");
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  const handleSubmit = async () => {
+    if (!errorType) return;
+    setSending(true);
+    await fetch(REPORT_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ org_id: org.id, org_name: org.name, error_type: errorType, comment }),
+    });
+    setSending(false);
+    setSent(true);
+  };
+
+  if (sent) {
+    return (
+      <div className="text-center py-4">
+        <div className="text-3xl mb-2">🙏</div>
+        <p className="font-semibold text-sm text-[hsl(var(--foreground))]">Спасибо! Мы проверим данные</p>
+        <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1">Ваше сообщение передано редактору</p>
+        <button onClick={onClose} className="mt-4 text-xs text-[hsl(var(--terra))] hover:underline">Закрыть</button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-[hsl(var(--muted-foreground))]">Что именно неточно?</p>
+      <div className="flex flex-col gap-1.5">
+        {ERROR_TYPES.map((t) => (
+          <button
+            key={t}
+            onClick={() => setErrorType(t)}
+            className={`text-left text-sm px-3 py-2 rounded-xl border transition-colors ${
+              errorType === t
+                ? "border-[hsl(var(--terra))] bg-[hsl(var(--terra-light))] text-[hsl(var(--terra))] font-medium"
+                : "border-[hsl(var(--border))] text-[hsl(var(--foreground))] hover:border-[hsl(var(--terra))]"
+            }`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+      <textarea
+        value={comment}
+        onChange={(e) => setComment(e.target.value)}
+        placeholder="Уточните подробности (необязательно)..."
+        rows={3}
+        className="w-full text-sm border border-[hsl(var(--border))] rounded-xl px-3 py-2 resize-none focus:outline-none focus:border-[hsl(var(--terra))] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]"
+      />
+      <div className="flex gap-2">
+        <button
+          onClick={handleSubmit}
+          disabled={!errorType || sending}
+          className="flex-1 py-2.5 rounded-xl bg-[hsl(var(--terra))] text-white text-sm font-medium disabled:opacity-40 hover:opacity-90 transition-opacity"
+        >
+          {sending ? "Отправка..." : "Отправить"}
+        </button>
+        <button onClick={onClose} className="px-4 py-2.5 rounded-xl border border-[hsl(var(--border))] text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
+          Отмена
+        </button>
+      </div>
+    </div>
+  );
+}
+
 interface Props {
   orgId: string;
   onBack: () => void;
@@ -39,6 +119,7 @@ function ContactRow({ icon, label, value, href }: { icon: string; label: string;
 
 export default function OrgPage({ orgId, onBack, backLabel }: Props) {
   const [org, setOrg] = useState<DbOrganization | null | undefined>(undefined);
+  const [reportOpen, setReportOpen] = useState(false);
 
   useEffect(() => {
     fetchOrganizationById(orgId).then((found) => {
@@ -256,6 +337,21 @@ export default function OrgPage({ orgId, onBack, backLabel }: Props) {
             </p>
           </div>
         )}
+
+        {/* Сообщить об ошибке */}
+        <div className="bg-white rounded-2xl border border-[hsl(var(--border))] p-4">
+          {reportOpen ? (
+            <ReportErrorForm org={org} onClose={() => setReportOpen(false)} />
+          ) : (
+            <button
+              onClick={() => setReportOpen(true)}
+              className="w-full flex items-center gap-2 text-sm text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--terra))] transition-colors"
+            >
+              <Icon name="AlertCircle" size={15} />
+              Нашли неточность? Сообщить об ошибке
+            </button>
+          )}
+        </div>
 
       </div>
     </div>
