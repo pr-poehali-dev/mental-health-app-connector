@@ -2,6 +2,7 @@
 import json
 import os
 import io
+import urllib.request
 import boto3
 import openpyxl
 import psycopg2
@@ -24,6 +25,18 @@ def handler(event: dict, context) -> dict:
         return {"statusCode": 200, "headers": cors(), "body": ""}
 
     params = event.get("queryStringParameters") or {}
+
+    # Режим fetch-url — скачать файл по URL и положить в S3
+    if params.get("mode") == "fetch-url":
+        url = params.get("url")
+        key = params.get("key", "imports/upload.xlsx")
+        if not url:
+            return {"statusCode": 400, "headers": cors(), "body": json.dumps({"error": "url required"})}
+        with urllib.request.urlopen(url) as resp:
+            data = resp.read()
+        s3 = get_s3()
+        s3.put_object(Bucket="files", Key=key, Body=data, ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        return {"statusCode": 200, "headers": cors(), "body": json.dumps({"ok": True, "key": key, "size": len(data)})}
 
     # Режим list — показать файлы в S3
     if params.get("mode") == "list":
