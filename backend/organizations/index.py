@@ -71,8 +71,17 @@ def get_organizations(params: dict) -> dict:
 
     where = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
+    limit = int(params.get("limit", 200))
+    offset = int(params.get("offset", 0))
+
     cur.execute(
-        f"SELECT id, number, name, category, org_type, target_group, short_description, help_types, help_format, conditions, city, address, phones, email, website_social, director, coordinates, verification_status, verified_at, created_at, updated_at FROM {SCHEMA}.organizations {where} ORDER BY number NULLS LAST, id",
+        f"SELECT COUNT(*) FROM {SCHEMA}.organizations {where}",
+        values,
+    )
+    total = cur.fetchone()[0]
+
+    cur.execute(
+        f"SELECT id, number, name, category, org_type, target_group, short_description, help_types, help_format, conditions, city, address, phones, email, website_social, director, coordinates, verification_status, verified_at, created_at, updated_at FROM {SCHEMA}.organizations {where} ORDER BY number NULLS LAST, id LIMIT {limit} OFFSET {offset}",
         values,
     )
 
@@ -91,7 +100,7 @@ def get_organizations(params: dict) -> dict:
     return {
         "statusCode": 200,
         "headers": {**cors_headers(), "Content-Type": "application/json"},
-        "body": json.dumps({"organizations": rows, "total": len(rows)}, ensure_ascii=False),
+        "body": json.dumps({"organizations": rows, "total": total, "limit": limit, "offset": offset}, ensure_ascii=False),
     }
 
 

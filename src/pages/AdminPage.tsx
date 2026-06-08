@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import {
-  fetchOrganizations,
+  fetchAllOrganizations,
   createOrganization,
   updateOrganization,
   deleteOrganization,
@@ -58,7 +58,7 @@ export default function AdminPage({ onNavigate }: Props) {
 
   const loadOrgs = () => {
     setLoading(true);
-    fetchOrganizations().then((data) => {
+    fetchAllOrganizations().then((data) => {
       setOrgs(data);
       setLoading(false);
     });

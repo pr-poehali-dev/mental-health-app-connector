@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
-import { fetchOrganizations, type DbOrganization } from "@/api/organizations";
+import { fetchAllOrganizations, type DbOrganization } from "@/api/organizations";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
@@ -38,7 +38,7 @@ export default function MapPage({ onNavigate }: Props) {
   const markersRef = useRef<L.Marker[]>([]);
 
   useEffect(() => {
-    fetchOrganizations().then((data) => {
+    fetchAllOrganizations().then((data) => {
       setOrgs(data);
       setLoading(false);
     });

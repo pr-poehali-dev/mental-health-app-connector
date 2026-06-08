@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { CATEGORY_META, dbCategoryToKey, type OrgCategory } from "@/data/types";
-import { fetchOrganizations, type DbOrganization } from "@/api/organizations";
+import { fetchOrganizations } from "@/api/organizations";
 
 interface Props {
   onNavigate: (page: string, params?: Record<string, string>) => void;

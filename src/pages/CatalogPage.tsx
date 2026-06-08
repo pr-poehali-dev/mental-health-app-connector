@@ -14,7 +14,7 @@ import {
   type ServiceType,
   type PaymentType,
 } from "@/data/types";
-import { fetchOrganizations, type DbOrganization } from "@/api/organizations";
+import { fetchAllOrganizations, type DbOrganization } from "@/api/organizations";
 
 interface Props {
   onNavigate: (page: string, params?: Record<string, string>) => void;
@@ -141,7 +141,7 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
   const [sortBy, setSortBy] = useState<"name" | "updated">("name");
 
   useEffect(() => {
-    fetchOrganizations().then((data) => {
+    fetchAllOrganizations().then((data) => {
       setAllOrgs(data);
       setLoading(false);
     });

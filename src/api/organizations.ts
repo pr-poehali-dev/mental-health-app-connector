@@ -29,16 +29,38 @@ export async function fetchOrganizations(params?: {
   city?: string;
   category?: string;
   status?: string;
+  limit?: number;
+  offset?: number;
 }): Promise<DbOrganization[]> {
   const qs = new URLSearchParams();
   if (params?.search) qs.set("search", params.search);
   if (params?.city) qs.set("city", params.city);
   if (params?.category) qs.set("category", params.category);
   if (params?.status) qs.set("status", params.status);
+  if (params?.limit) qs.set("limit", String(params.limit));
+  if (params?.offset) qs.set("offset", String(params.offset));
   const url = qs.toString() ? `${BASE_URL}?${qs}` : BASE_URL;
   const res = await fetch(url);
   const data = await res.json();
-  return data.organizations as DbOrganization[];
+  return (data.organizations ?? data ?? []) as DbOrganization[];
+}
+
+export async function fetchAllOrganizations(params?: {
+  search?: string;
+  city?: string;
+  category?: string;
+  status?: string;
+}): Promise<DbOrganization[]> {
+  const PAGE = 200;
+  let offset = 0;
+  let all: DbOrganization[] = [];
+  while (true) {
+    const batch = await fetchOrganizations({ ...params, limit: PAGE, offset });
+    all = all.concat(batch);
+    if (batch.length < PAGE) break;
+    offset += PAGE;
+  }
+  return all;
 }
 
 export async function createOrganization(org: Partial<DbOrganization>): Promise<number> {
