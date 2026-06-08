@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
-import { CATEGORY_META, dbCategoryToKey, type OrgCategory } from "@/data/types";
-import { fetchOrganizations } from "@/api/organizations";
+import { CATEGORY_META, type OrgCategory } from "@/data/types";
+import { fetchStats } from "@/api/organizations";
 
 interface Props {
   onNavigate: (page: string, params?: Record<string, string>) => void;
@@ -46,22 +46,13 @@ const scenarios = [
 ];
 
 export default function MainPage({ onNavigate }: Props) {
-  const [orgs, setOrgs] = useState<DbOrganization[]>([]);
+  const [stats, setStats] = useState({ total: 0, verified: 0, categories: 0 });
 
   useEffect(() => {
-    fetchOrganizations().then(setOrgs);
+    fetchStats().then(setStats);
   }, []);
 
-  const verified = orgs.filter((o) => o.verification_status === "verified").length;
-  const total = orgs.length;
-
-  const categoryCounts = orgs.reduce<Record<string, number>>((acc, o) => {
-    if (!o.category) return acc;
-    const key = o.category.toLowerCase();
-    acc[key] = (acc[key] ?? 0) + 1;
-    return acc;
-  }, {});
-  const activeCategoryCount = Object.keys(categoryCounts).length;
+  const { verified, total, categories: activeCategoryCount } = stats;
 
   const categories = Object.entries(CATEGORY_META) as [OrgCategory, typeof CATEGORY_META[OrgCategory]][];
 

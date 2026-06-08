@@ -25,6 +25,8 @@ def handler(event: dict, context) -> dict:
     if method == "GET":
         if params.get("id"):
             return get_organization_by_id(params["id"])
+        if params.get("mode") == "stats":
+            return get_stats()
         return get_organizations(params)
     elif method == "POST":
         body = json.loads(event.get("body") or "{}")
@@ -103,6 +105,20 @@ def get_organizations(params: dict) -> dict:
         "statusCode": 200,
         "headers": {**cors_headers(), "Content-Type": "application/json"},
         "body": json.dumps({"organizations": rows, "total": total, "limit": limit, "offset": offset}, ensure_ascii=False),
+    }
+
+
+def get_stats() -> dict:
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(f"SELECT COUNT(*), COUNT(CASE WHEN verification_status='verified' THEN 1 END), COUNT(DISTINCT category) FROM {SCHEMA}.organizations")
+    total, verified, categories = cur.fetchone()
+    cur.close()
+    conn.close()
+    return {
+        "statusCode": 200,
+        "headers": {**cors_headers(), "Content-Type": "application/json"},
+        "body": json.dumps({"total": total, "verified": verified, "categories": categories}, ensure_ascii=False),
     }
 
 

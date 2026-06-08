@@ -91,6 +91,11 @@ export async function fetchOrganizationById(id: string): Promise<DbOrganization 
   return data.organization ?? null;
 }
 
+export async function fetchStats(): Promise<{ total: number; verified: number; categories: number }> {
+  const res = await fetch(`${BASE_URL}?mode=stats`);
+  return res.json();
+}
+
 export async function bulkCreateOrganizations(
   items: Partial<DbOrganization>[]
 ): Promise<{ created: number; errors: { row: number; error: string }[] }> {
