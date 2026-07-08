@@ -10,8 +10,9 @@ import MapPage from "@/pages/MapPage";
 import EmergencyHelpPage from "@/pages/EmergencyHelpPage";
 import AdminPage from "@/pages/AdminPage";
 import MaterialsPage from "@/pages/MaterialsPage";
+import SuggestOrgPage from "@/pages/SuggestOrgPage";
 
-type Page = "home" | "catalog" | "org" | "map" | "emergency" | "admin" | "materials";
+type Page = "home" | "catalog" | "org" | "map" | "emergency" | "admin" | "materials" | "suggest-org";
 
 interface NavState {
   page: Page;
@@ -83,6 +84,8 @@ const App = () => {
         return <MaterialsPage onNavigate={navigate} />;
       case "admin":
         return <AdminPage onNavigate={navigate} />;
+      case "suggest-org":
+        return <SuggestOrgPage onNavigate={navigate} onBack={goBack} />;
       default:
         return <MainPage onNavigate={navigate} />;
     }

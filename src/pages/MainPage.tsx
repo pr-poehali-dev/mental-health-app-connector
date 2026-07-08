@@ -165,6 +165,21 @@ export default function MainPage({ onNavigate }: Props) {
           </p>
         </div>
 
+        {/* Предложить организацию */}
+        <button
+          onClick={() => onNavigate("suggest-org")}
+          className="w-full flex items-center gap-3 p-4 rounded-2xl border border-[hsl(var(--border))] bg-white hover:border-[hsl(var(--terra))] transition-colors text-left"
+        >
+          <div className="w-9 h-9 rounded-xl bg-[hsl(var(--terra-light))] flex items-center justify-center flex-shrink-0">
+            <Icon name="Building2" size={16} className="text-[hsl(var(--terra))]" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold text-xs text-[hsl(var(--foreground))]">Вы представитель организации?</div>
+            <div className="text-[10px] text-[hsl(var(--muted-foreground))] mt-0.5">Предложите её для размещения в каталоге</div>
+          </div>
+          <Icon name="ChevronRight" size={16} className="text-[hsl(var(--muted-foreground))] flex-shrink-0" />
+        </button>
+
       </div>
     </div>
   );
