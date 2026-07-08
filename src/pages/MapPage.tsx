@@ -1,23 +1,17 @@
 import { useState, useEffect, useRef } from "react";
 import Icon from "@/components/ui/icon";
 import { fetchAllOrganizations, type DbOrganization } from "@/api/organizations";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 
-import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
-import markerIcon from "leaflet/dist/images/marker-icon.png";
-import markerShadow from "leaflet/dist/images/marker-shadow.png";
-
-// @ts-expect-error leaflet private
-delete L.Icon.Default.prototype._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconUrl: markerIcon,
-  iconRetinaUrl: markerIcon2x,
-  shadowUrl: markerShadow,
-});
+const MAP_CONFIG_URL = "https://functions.poehali.dev/fe29379b-7928-4851-b5c5-5d6085a53f7b";
 
 interface Props {
   onNavigate: (page: string, params?: Record<string, string>) => void;
+}
+
+declare global {
+  interface Window {
+    ymaps?: any;
+  }
 }
 
 function parseCoords(raw: string | null): [number, number] | null {
@@ -29,13 +23,34 @@ function parseCoords(raw: string | null): [number, number] | null {
   return null;
 }
 
+let ymapsLoadPromise: Promise<any> | null = null;
+
+function loadYmaps(apiKey: string): Promise<any> {
+  if (window.ymaps) return Promise.resolve(window.ymaps);
+  if (ymapsLoadPromise) return ymapsLoadPromise;
+
+  ymapsLoadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = `https://api-maps.yandex.ru/2.1/?apikey=${apiKey}&lang=ru_RU`;
+    script.onload = () => {
+      window.ymaps.ready(() => resolve(window.ymaps));
+    };
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+
+  return ymapsLoadPromise;
+}
+
 export default function MapPage({ onNavigate }: Props) {
   const [orgs, setOrgs] = useState<DbOrganization[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mapReady, setMapReady] = useState(false);
+  const [mapError, setMapError] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState<DbOrganization | null>(null);
-  const mapRef = useRef<L.Map | null>(null);
+  const mapRef = useRef<any>(null);
   const mapDivRef = useRef<HTMLDivElement>(null);
-  const markersRef = useRef<L.Marker[]>([]);
+  const placemarksRef = useRef<any[]>([]);
 
   useEffect(() => {
     fetchAllOrganizations().then((data) => {
@@ -47,46 +62,56 @@ export default function MapPage({ onNavigate }: Props) {
   useEffect(() => {
     if (loading || !mapDivRef.current || mapRef.current) return;
 
-    const map = L.map(mapDivRef.current, {
-      center: [52.5, 83.0],
-      zoom: 7,
-      zoomControl: true,
-    });
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      attribution: "© OpenStreetMap",
-      maxZoom: 18,
-    }).addTo(map);
-
-    mapRef.current = map;
+    fetch(MAP_CONFIG_URL)
+      .then((r) => r.json())
+      .then(({ apiKey }) => {
+        if (!apiKey) {
+          setMapError(true);
+          return;
+        }
+        return loadYmaps(apiKey).then((ymaps) => {
+          if (!mapDivRef.current || mapRef.current) return;
+          const map = new ymaps.Map(mapDivRef.current, {
+            center: [55.0, 60.0],
+            zoom: 4,
+            controls: ["zoomControl"],
+          });
+          mapRef.current = map;
+          setMapReady(true);
+        });
+      })
+      .catch(() => setMapError(true));
   }, [loading]);
 
   useEffect(() => {
-    if (!mapRef.current || loading) return;
+    if (!mapReady || !mapRef.current || loading) return;
+    const ymaps = window.ymaps;
 
-    markersRef.current.forEach((m) => m.remove());
-    markersRef.current = [];
+    placemarksRef.current.forEach((p) => mapRef.current.geoObjects.remove(p));
+    placemarksRef.current = [];
 
     orgs.filter((o) => parseCoords(o.coordinates)).forEach((org) => {
       const coords = parseCoords(org.coordinates)!;
-      const marker = L.marker(coords)
-        .addTo(mapRef.current!)
-        .bindPopup(
-          `<div style="font-size:13px;max-width:220px">
-            <strong style="font-size:13px;line-height:1.3">${org.name}</strong>
-            ${org.city ? `<div style="color:#666;font-size:11px;margin-top:2px">${org.city}</div>` : ""}
-            ${org.phones ? `<div style="margin-top:4px;font-size:12px">📞 ${org.phones.split(";")[0].trim()}</div>` : ""}
-            <div style="margin-top:8px">
-              <a href="#" onclick="window.__orgNav('${org.id}');return false;" style="color:#c1440e;font-size:12px;font-weight:600">Подробнее →</a>
-            </div>
-          </div>`,
-          { maxWidth: 240 }
-        )
-        .on("click", () => setSelectedOrg(org));
+      const balloonContent = `
+        <div style="font-size:13px;max-width:220px">
+          <strong style="font-size:13px;line-height:1.3">${org.name}</strong>
+          ${org.city ? `<div style="color:#666;font-size:11px;margin-top:2px">${org.city}</div>` : ""}
+          ${org.phones ? `<div style="margin-top:4px;font-size:12px">📞 ${org.phones.split(";")[0].trim()}</div>` : ""}
+          <div style="margin-top:8px">
+            <a href="#" onclick="window.__orgNav('${org.id}');return false;" style="color:#c1440e;font-size:12px;font-weight:600">Подробнее →</a>
+          </div>
+        </div>`;
 
-      markersRef.current.push(marker);
+      const placemark = new ymaps.Placemark(
+        coords,
+        { balloonContent },
+        { preset: "islands#redDotIcon" }
+      );
+      placemark.events.add("click", () => setSelectedOrg(org));
+      mapRef.current.geoObjects.add(placemark);
+      placemarksRef.current.push(placemark);
     });
-  }, [orgs, loading]);
+  }, [orgs, loading, mapReady]);
 
   useEffect(() => {
     (window as Window & { __orgNav?: (id: string) => void }).__orgNav = (id: string) => {
@@ -114,6 +139,12 @@ export default function MapPage({ onNavigate }: Props) {
         {loading ? (
           <div className="h-80 bg-[hsl(var(--muted))] rounded-2xl animate-pulse flex items-center justify-center">
             <p className="text-sm text-[hsl(var(--muted-foreground))]">Загрузка карты...</p>
+          </div>
+        ) : mapError ? (
+          <div className="h-80 bg-[hsl(var(--muted))] rounded-2xl flex items-center justify-center px-6 text-center">
+            <p className="text-sm text-[hsl(var(--muted-foreground))]">
+              Карта временно недоступна. Список организаций — ниже.
+            </p>
           </div>
         ) : (
           <div
@@ -161,7 +192,7 @@ export default function MapPage({ onNavigate }: Props) {
                   onClick={() => {
                     const coords = parseCoords(org.coordinates);
                     if (coords && mapRef.current) {
-                      mapRef.current.setView(coords, 13, { animate: true });
+                      mapRef.current.setCenter(coords, 13, { duration: 300 });
                     }
                     setSelectedOrg(org);
                   }}
