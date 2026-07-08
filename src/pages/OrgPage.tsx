@@ -101,6 +101,39 @@ function splitSemicolon(val: string | null | undefined): string[] {
   return val.split(";").map((s) => s.trim()).filter(Boolean);
 }
 
+interface ParsedPhone {
+  raw: string;
+  number: string;
+  label: string | null;
+  isPriority: boolean;
+}
+
+// Разбирает строку телефона вида "горячая линия: +7 ..." / "+7 ... (главный врач)" / "+7 ..., приёмная"
+function parsePhoneEntry(raw: string): ParsedPhone {
+  let label: string | null = null;
+  let number = raw.trim();
+
+  let m = number.match(/^([^\d:]{2,40}):\s*(.+)$/);
+  if (m) {
+    label = m[1].trim();
+    number = m[2].trim();
+  } else if ((m = number.match(/^(.+?)\s*\(([^)0-9][^)]{1,40})\)$/))) {
+    number = m[1].trim();
+    label = m[2].trim();
+  } else if ((m = number.match(/^(.+?),\s*([А-Яа-яЁё][^,]{1,40})$/))) {
+    number = m[1].trim();
+    label = m[2].trim();
+  } else if ((m = number.match(/^(.+?)\s*—\s*([А-Яа-яЁё][^—]{1,40})$/))) {
+    number = m[1].trim();
+    label = m[2].trim();
+  }
+
+  const hay = `${label ?? ""} ${raw}`.toLowerCase();
+  const isPriority = /довери|горяч.{0,3}лин|экстрен/.test(hay);
+
+  return { raw, number, label, isPriority };
+}
+
 function ContactRow({ icon, label, value, href }: { icon: string; label: string; value: string; href?: string }) {
   const inner = (
     <div className="flex items-center gap-3 group">
@@ -120,6 +153,7 @@ function ContactRow({ icon, label, value, href }: { icon: string; label: string;
 export default function OrgPage({ orgId, onBack, backLabel }: Props) {
   const [org, setOrg] = useState<DbOrganization | null | undefined>(undefined);
   const [reportOpen, setReportOpen] = useState(false);
+  const [otherPhonesOpen, setOtherPhonesOpen] = useState(false);
 
   useEffect(() => {
     fetchOrganizationById(orgId).then((found) => {
@@ -158,7 +192,9 @@ export default function OrgPage({ orgId, onBack, backLabel }: Props) {
     .replace(/[А-Яа-яёЁ]+ (край|область|обл\.|р-н|район),?\s*/g, "")
     .trim().replace(/^,\s*/, "");
 
-  const phones = splitSemicolon(org.phones);
+  const parsedPhones = splitSemicolon(org.phones).map(parsePhoneEntry);
+  const priorityPhone = parsedPhones.find((p) => p.isPriority) ?? null;
+  const otherPhones = parsedPhones.filter((p) => p !== priorityPhone);
   const helpTypes = splitSemicolon(org.help_types);
   const helpFormats = splitSemicolon(org.help_format);
   const conditions = splitSemicolon(org.conditions);
@@ -188,12 +224,10 @@ export default function OrgPage({ orgId, onBack, backLabel }: Props) {
                 </span>
               )}
               <h1 className="font-serif text-xl font-medium text-[hsl(var(--foreground))] leading-snug">{org.name}</h1>
-              {(displayCity || cleanAddress) && (
+              {displayCity && (
                 <div className="flex items-center gap-1 mt-1.5 text-xs text-[hsl(var(--muted-foreground))]">
                   <Icon name="MapPin" size={11} />
-                  {displayCity && cleanAddress
-                    ? `${displayCity}, ${cleanAddress}`
-                    : displayCity || cleanAddress}
+                  {displayCity}
                 </div>
               )}
             </div>
@@ -208,69 +242,29 @@ export default function OrgPage({ orgId, onBack, backLabel }: Props) {
               </span>
             )}
           </div>
+
+          {/* Главный номер — горячая линия / телефон доверия */}
+          {priorityPhone && (
+            <a
+              href={`tel:${priorityPhone.number.replace(/[\s\-()]/g, "")}`}
+              className="mt-4 flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-red-600 text-white shadow-sm hover:bg-red-700 transition-colors"
+            >
+              <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                <Icon name="Phone" size={17} className="text-white" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="text-[10px] font-medium uppercase tracking-wider opacity-90">
+                  {priorityPhone.label ?? "Срочная помощь"}
+                </div>
+                <div className="text-base font-bold leading-tight">{priorityPhone.number}</div>
+              </div>
+              <Icon name="ChevronRight" size={16} className="text-white/80 flex-shrink-0" />
+            </a>
+          )}
         </div>
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-4">
-
-        {/* Описание */}
-        {org.short_description && (
-          <div className="bg-white rounded-2xl border border-[hsl(var(--border))] p-5">
-            <h2 className="font-semibold text-xs text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-2">Об организации</h2>
-            <p className="text-sm text-[hsl(var(--foreground))] leading-relaxed">{org.short_description}</p>
-          </div>
-        )}
-
-        {/* Для кого */}
-        {targetGroups.length > 0 && (
-          <div className="bg-white rounded-2xl border border-[hsl(var(--border))] p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">👥</span>
-              <h2 className="font-semibold text-xs text-[hsl(var(--muted-foreground))] uppercase tracking-wider">Кому помогает</h2>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {targetGroups.map((t) => (
-                <span key={t} className="text-xs px-2.5 py-1 rounded-xl bg-blue-50 text-blue-700 font-medium">{t}</span>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Виды и формат помощи */}
-        {(helpTypes.length > 0 || helpFormats.length > 0) && (
-          <div className="bg-white rounded-2xl border border-[hsl(var(--border))] p-4">
-            <h2 className="font-semibold text-xs text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3">Виды и формат помощи</h2>
-            {helpTypes.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 mb-2">
-                {helpTypes.map((t) => (
-                  <span key={t} className="text-xs px-2.5 py-1 rounded-xl bg-[hsl(var(--terra-light))] text-[hsl(var(--terra))] font-medium">{t}</span>
-                ))}
-              </div>
-            )}
-            {helpFormats.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {helpFormats.map((f) => (
-                  <span key={f} className="text-xs px-2.5 py-1 rounded-xl bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] font-medium">{f}</span>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Условия */}
-        {conditions.length > 0 && (
-          <div className="bg-white rounded-2xl border border-[hsl(var(--border))] p-4">
-            <div className="flex items-center gap-2 mb-3">
-              <span className="text-lg">📋</span>
-              <h2 className="font-semibold text-xs text-[hsl(var(--muted-foreground))] uppercase tracking-wider">Условия получения помощи</h2>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {conditions.map((c) => (
-                <span key={c} className="text-xs px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 font-medium">{c}</span>
-              ))}
-            </div>
-          </div>
-        )}
 
         {/* Контакты */}
         <div className="bg-white rounded-2xl border border-[hsl(var(--border))] p-4">
@@ -290,15 +284,14 @@ export default function OrgPage({ orgId, onBack, backLabel }: Props) {
               </div>
             )}
 
-            {phones.map((phone, i) => (
+            {!priorityPhone && otherPhones[0] && (
               <ContactRow
-                key={i}
                 icon="Phone"
-                label={i === 0 ? "Телефон" : "Доп. телефон"}
-                value={phone}
-                href={`tel:${phone.replace(/[\s\-()]/g, "")}`}
+                label={otherPhones[0].label ?? "Телефон"}
+                value={otherPhones[0].number}
+                href={`tel:${otherPhones[0].number.replace(/[\s\-()]/g, "")}`}
               />
-            ))}
+            )}
 
             {org.email && (
               <ContactRow icon="Mail" label="Email" value={org.email} href={`mailto:${org.email}`} />
@@ -326,15 +319,93 @@ export default function OrgPage({ orgId, onBack, backLabel }: Props) {
               </div>
             )}
           </div>
+
+          {/* Другие контакты — свёрнуты по умолчанию */}
+          {(priorityPhone ? otherPhones : otherPhones.slice(1)).length > 0 && (
+            <div className="mt-3 pt-3 border-t border-[hsl(var(--border))]">
+              <button
+                onClick={() => setOtherPhonesOpen(!otherPhonesOpen)}
+                className="w-full flex items-center justify-between text-xs font-medium text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]"
+              >
+                Другие контакты ({(priorityPhone ? otherPhones : otherPhones.slice(1)).length})
+                <Icon name={otherPhonesOpen ? "ChevronUp" : "ChevronDown"} size={14} />
+              </button>
+              {otherPhonesOpen && (
+                <div className="space-y-2.5 mt-3 animate-slide-up">
+                  {(priorityPhone ? otherPhones : otherPhones.slice(1)).map((phone, i) => (
+                    <ContactRow
+                      key={i}
+                      icon="Phone"
+                      label={phone.label ?? "Телефон"}
+                      value={phone.number}
+                      href={`tel:${phone.number.replace(/[\s\-()]/g, "")}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
-        {/* Тип организации */}
-        {org.org_type && (
-          <div className="flex items-start gap-3 p-4 rounded-2xl bg-[hsl(var(--muted))] border border-[hsl(var(--border))]">
-            <Icon name="Info" size={16} className="text-[hsl(var(--muted-foreground))] flex-shrink-0 mt-0.5" />
-            <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed">
-              <strong>Тип организации:</strong> {org.org_type}
-            </p>
+        {/* Условия */}
+        {conditions.length > 0 && (
+          <div className="bg-white rounded-2xl border border-[hsl(var(--border))] p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">📋</span>
+              <h2 className="font-semibold text-xs text-[hsl(var(--muted-foreground))] uppercase tracking-wider">Условия получения помощи</h2>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {conditions.map((c) => (
+                <span key={c} className="text-xs px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 font-medium">{c}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Виды помощи */}
+        {helpTypes.length > 0 && (
+          <div className="bg-white rounded-2xl border border-[hsl(var(--border))] p-4">
+            <h2 className="font-semibold text-xs text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3">Виды помощи</h2>
+            <div className="flex flex-wrap gap-1.5">
+              {helpTypes.map((t) => (
+                <span key={t} className="text-xs px-2.5 py-1 rounded-xl bg-[hsl(var(--terra-light))] text-[hsl(var(--terra))] font-medium">{t}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Формат помощи */}
+        {helpFormats.length > 0 && (
+          <div className="bg-white rounded-2xl border border-[hsl(var(--border))] p-4">
+            <h2 className="font-semibold text-xs text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3">Формат помощи</h2>
+            <div className="flex flex-wrap gap-1.5">
+              {helpFormats.map((f) => (
+                <span key={f} className="text-xs px-2.5 py-1 rounded-xl bg-[hsl(var(--muted))] text-[hsl(var(--muted-foreground))] font-medium">{f}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Для кого */}
+        {targetGroups.length > 0 && (
+          <div className="bg-white rounded-2xl border border-[hsl(var(--border))] p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <span className="text-lg">👥</span>
+              <h2 className="font-semibold text-xs text-[hsl(var(--muted-foreground))] uppercase tracking-wider">Кому помогает</h2>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {targetGroups.map((t) => (
+                <span key={t} className="text-xs px-2.5 py-1 rounded-xl bg-blue-50 text-blue-700 font-medium">{t}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Описание */}
+        {org.short_description && (
+          <div className="bg-white rounded-2xl border border-[hsl(var(--border))] p-5">
+            <h2 className="font-semibold text-xs text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-2">Об организации</h2>
+            <p className="text-sm text-[hsl(var(--foreground))] leading-relaxed">{org.short_description}</p>
           </div>
         )}
 
