@@ -14,6 +14,7 @@ import {
   type PaymentType,
 } from "@/data/types";
 import { fetchAllOrganizations, type DbOrganization } from "@/api/organizations";
+import { useSaved } from "@/hooks/useSaved";
 
 const MAP_CONFIG_URL = "https://functions.poehali.dev/fe29379b-7928-4851-b5c5-5d6085a53f7b";
 
@@ -33,27 +34,6 @@ interface Filters {
   paymentTypes: PaymentType[];
 }
 
-function useSavedOrgs() {
-  const KEY = "saved_items";
-  const load = (): { orgs: number[]; materials: number[] } => {
-    try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { return { orgs: [], materials: [] }; }
-  };
-  const [saved, setSaved] = useState(load);
-
-  const toggleOrg = (id: number) => {
-    setSaved((prev) => {
-      const orgs = prev.orgs ?? [];
-      const next = orgs.includes(id) ? orgs.filter((x) => x !== id) : [...orgs, id];
-      const result = { ...prev, orgs: next };
-      localStorage.setItem(KEY, JSON.stringify(result));
-      return result;
-    });
-  };
-
-  const isSaved = (id: number) => (saved.orgs ?? []).includes(id);
-  return { toggleOrg, isSaved };
-}
-
 // Первая явная метка "кому подходит" — самая заметная аудитория из target_group
 function primaryTag(org: DbOrganization): string | null {
   const tags = org.target_group ? org.target_group.split(";").map((s) => s.trim()).filter(Boolean) : [];
@@ -63,7 +43,7 @@ function primaryTag(org: DbOrganization): string | null {
 function DbOrgCard({ org, onSelect }: { org: DbOrganization; onSelect: () => void }) {
   const cat = CATEGORY_META[dbCategoryToKey(org.category, org.name)];
   const tag = primaryTag(org);
-  const { toggleOrg, isSaved } = useSavedOrgs();
+  const { toggleOrg, isSaved } = useSaved();
   const saved = isSaved(org.id);
 
   return (

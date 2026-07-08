@@ -10,6 +10,7 @@ import EmergencyHelpPage from "@/pages/EmergencyHelpPage";
 import AdminPage from "@/pages/AdminPage";
 import MaterialsPage from "@/pages/MaterialsPage";
 import SuggestOrgPage from "@/pages/SuggestOrgPage";
+import { useSaved } from "@/hooks/useSaved";
 
 type Page = "home" | "catalog" | "org" | "emergency" | "admin" | "materials" | "suggest-org";
 
@@ -28,6 +29,7 @@ const NAV_ITEMS: { id: Page; label: string; icon: string }[] = [
 const App = () => {
   const [nav, setNav] = useState<NavState>({ page: "home", params: {} });
   const [history, setHistory] = useState<NavState[]>([]);
+  const { total: savedTotal } = useSaved();
 
   const navigate = useCallback(
     (page: string, params: Record<string, string> = {}) => {
@@ -77,7 +79,7 @@ const App = () => {
       case "emergency":
         return <EmergencyHelpPage onNavigate={navigate} />;
       case "materials":
-        return <MaterialsPage onNavigate={navigate} />;
+        return <MaterialsPage onNavigate={navigate} initialTab={nav.params.tab} />;
       case "admin":
         return <AdminPage onNavigate={navigate} />;
       case "suggest-org":
@@ -103,16 +105,17 @@ const App = () => {
               {NAV_ITEMS.map((item) => {
                 const isActive = nav.page === item.id;
                 const isEmergencyBtn = item.id === "emergency";
+                const showSavedBadge = item.id === "materials" && savedTotal > 0;
                 return (
                   <button
                     key={item.id}
-                    onClick={() => navigate(item.id)}
+                    onClick={() => navigate(item.id, showSavedBadge ? { tab: "saved" } : {})}
                     aria-label={item.label}
                     aria-current={isActive ? "page" : undefined}
                     className="flex-1 flex flex-col items-center gap-1 py-2.5 transition-all duration-200"
                   >
                     <div
-                      className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all duration-150 ${
+                      className={`relative w-8 h-8 flex items-center justify-center rounded-xl transition-all duration-150 ${
                         isEmergencyBtn
                           ? isActive ? "bg-red-100 scale-110" : "hover:bg-red-50"
                           : isActive ? "bg-[hsl(var(--terra-light))] scale-110" : "hover:bg-[hsl(var(--muted))]"
@@ -127,6 +130,11 @@ const App = () => {
                             : isActive ? "text-[hsl(var(--terra))]" : "text-[hsl(var(--muted-foreground))]"
                         }
                       />
+                      {showSavedBadge && (
+                        <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center border-2 border-white">
+                          {savedTotal > 9 ? "9+" : savedTotal}
+                        </span>
+                      )}
                     </div>
                     <span
                       className={`text-[10px] font-medium leading-none ${
@@ -161,11 +169,12 @@ const App = () => {
               {NAV_ITEMS.map((item) => {
                 const isActive = nav.page === item.id;
                 const isEmergencyBtn = item.id === "emergency";
+                const showSavedBadge = item.id === "materials" && savedTotal > 0;
 
                 return (
                   <button
                     key={item.id}
-                    onClick={() => navigate(item.id)}
+                    onClick={() => navigate(item.id, showSavedBadge ? { tab: "saved" } : {})}
                     aria-label={item.label}
                     aria-current={isActive ? "page" : undefined}
                     className={`flex-1 flex flex-col items-center gap-1 transition-all duration-200 ${
@@ -194,7 +203,7 @@ const App = () => {
                     ) : (
                       <>
                         <div
-                          className={`w-8 h-8 flex items-center justify-center rounded-xl transition-all duration-150 ${
+                          className={`relative w-8 h-8 flex items-center justify-center rounded-xl transition-all duration-150 ${
                             isActive
                               ? "bg-[hsl(var(--terra-light))] scale-110"
                               : "hover:bg-[hsl(var(--muted))]"
@@ -209,6 +218,11 @@ const App = () => {
                                 : "text-[hsl(var(--muted-foreground))]"
                             }
                           />
+                          {showSavedBadge && (
+                            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center border-2 border-white">
+                              {savedTotal > 9 ? "9+" : savedTotal}
+                            </span>
+                          )}
                         </div>
                         <span
                           className={`text-[10px] font-medium leading-none ${

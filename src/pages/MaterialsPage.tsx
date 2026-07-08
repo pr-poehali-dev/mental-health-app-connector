@@ -3,9 +3,11 @@ import Icon from "@/components/ui/icon";
 import { fetchMaterials, type Material, type MaterialType } from "@/api/materials";
 import { fetchOrganizationById, type DbOrganization } from "@/api/organizations";
 import { CATEGORY_META, dbCategoryToKey } from "@/data/types";
+import { useSaved } from "@/hooks/useSaved";
 
 interface Props {
   onNavigate: (page: string, params?: Record<string, string>) => void;
+  initialTab?: string;
 }
 
 type Tab = "meditation" | "resource" | "faq" | "saved";
@@ -22,38 +24,6 @@ const TYPE_LABELS: Record<MaterialType, string> = {
   resource: "Ресурс",
   faq: "FAQ",
 };
-
-function useSaved() {
-  const KEY = "saved_items";
-  const load = (): { orgs: number[]; materials: number[] } => {
-    try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { return { orgs: [], materials: [] }; }
-  };
-  const [saved, setSaved] = useState(load);
-
-  const toggleMaterial = (id: number) => {
-    setSaved((prev) => {
-      const mats = prev.materials ?? [];
-      const next = mats.includes(id) ? mats.filter((x) => x !== id) : [...mats, id];
-      const result = { ...prev, materials: next };
-      localStorage.setItem(KEY, JSON.stringify(result));
-      return result;
-    });
-  };
-
-  const isSavedMaterial = (id: number) => (saved.materials ?? []).includes(id);
-
-  const toggleOrg = (id: number) => {
-    setSaved((prev) => {
-      const orgs = prev.orgs ?? [];
-      const next = orgs.includes(id) ? orgs.filter((x) => x !== id) : [...orgs, id];
-      const result = { ...prev, orgs: next };
-      localStorage.setItem(KEY, JSON.stringify(result));
-      return result;
-    });
-  };
-
-  return { saved, toggleMaterial, isSavedMaterial, toggleOrg };
-}
 
 function MeditationCard({ item, saved, onToggle }: { item: Material; saved: boolean; onToggle: () => void }) {
   const [open, setOpen] = useState(false);
@@ -179,8 +149,8 @@ function FaqCard({ item, saved, onToggle }: { item: Material; saved: boolean; on
   );
 }
 
-export default function MaterialsPage({ onNavigate }: Props) {
-  const [tab, setTab] = useState<Tab>("meditation");
+export default function MaterialsPage({ onNavigate, initialTab }: Props) {
+  const [tab, setTab] = useState<Tab>((initialTab as Tab) ?? "meditation");
   const [items, setItems] = useState<Material[]>([]);
   const [loading, setLoading] = useState(false);
   const { saved, toggleMaterial, isSavedMaterial } = useSaved();

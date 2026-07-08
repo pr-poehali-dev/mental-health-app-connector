@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { fetchOrganizationById, type DbOrganization } from "@/api/organizations";
 import { CATEGORY_META, dbCategoryToKey } from "@/data/types";
+import { useSaved } from "@/hooks/useSaved";
 
 const REPORT_URL = "https://functions.poehali.dev/eadd00f4-60fa-4bbc-a178-37e43108399b";
 
@@ -134,27 +135,6 @@ function parsePhoneEntry(raw: string): ParsedPhone {
   return { raw, number, label, isPriority };
 }
 
-function useSavedOrgs() {
-  const KEY = "saved_items";
-  const load = (): { orgs: number[]; materials: number[] } => {
-    try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { return { orgs: [], materials: [] }; }
-  };
-  const [saved, setSaved] = useState(load);
-
-  const toggleOrg = (id: number) => {
-    setSaved((prev) => {
-      const orgs = prev.orgs ?? [];
-      const next = orgs.includes(id) ? orgs.filter((x) => x !== id) : [...orgs, id];
-      const result = { ...prev, orgs: next };
-      localStorage.setItem(KEY, JSON.stringify(result));
-      return result;
-    });
-  };
-
-  const isSaved = (id: number) => (saved.orgs ?? []).includes(id);
-  return { toggleOrg, isSaved };
-}
-
 function ContactRow({ icon, label, value, href }: { icon: string; label: string; value: string; href?: string }) {
   const inner = (
     <div className="flex items-center gap-3 group">
@@ -175,7 +155,7 @@ export default function OrgPage({ orgId, onBack, backLabel }: Props) {
   const [org, setOrg] = useState<DbOrganization | null | undefined>(undefined);
   const [reportOpen, setReportOpen] = useState(false);
   const [otherPhonesOpen, setOtherPhonesOpen] = useState(false);
-  const { toggleOrg, isSaved } = useSavedOrgs();
+  const { toggleOrg, isSaved } = useSaved();
 
   useEffect(() => {
     fetchOrganizationById(orgId).then((found) => {
