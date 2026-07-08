@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import { fetchMaterials, type Material, type MaterialType } from "@/api/materials";
+import { fetchOrganizationById, type DbOrganization } from "@/api/organizations";
+import { CATEGORY_META, dbCategoryToKey } from "@/data/types";
 
 interface Props {
   onNavigate: (page: string, params?: Record<string, string>) => void;
@@ -39,7 +41,18 @@ function useSaved() {
   };
 
   const isSavedMaterial = (id: number) => (saved.materials ?? []).includes(id);
-  return { saved, toggleMaterial, isSavedMaterial };
+
+  const toggleOrg = (id: number) => {
+    setSaved((prev) => {
+      const orgs = prev.orgs ?? [];
+      const next = orgs.includes(id) ? orgs.filter((x) => x !== id) : [...orgs, id];
+      const result = { ...prev, orgs: next };
+      localStorage.setItem(KEY, JSON.stringify(result));
+      return result;
+    });
+  };
+
+  return { saved, toggleMaterial, isSavedMaterial, toggleOrg };
 }
 
 function MeditationCard({ item, saved, onToggle }: { item: Material; saved: boolean; onToggle: () => void }) {
@@ -295,7 +308,8 @@ function Empty({ icon, text }: { icon: string; text: string }) {
 
 function SavedTab({ savedOrgs, savedMaterials, onNavigate }: { savedOrgs: number[]; savedMaterials: number[]; onNavigate: (page: string, params?: Record<string, string>) => void }) {
   const [matItems, setMatItems] = useState<Material[]>([]);
-  const { toggleMaterial, isSavedMaterial } = useSaved();
+  const [orgItems, setOrgItems] = useState<Record<number, DbOrganization | null>>({});
+  const { toggleMaterial, toggleOrg } = useSaved();
 
   useEffect(() => {
     if (savedMaterials.length === 0) return;
@@ -303,6 +317,15 @@ function SavedTab({ savedOrgs, savedMaterials, onNavigate }: { savedOrgs: number
       setMatItems(all.filter((m) => savedMaterials.includes(m.id)));
     });
   }, [savedMaterials.join(",")]);
+
+  useEffect(() => {
+    savedOrgs.forEach((id) => {
+      if (id in orgItems) return;
+      fetchOrganizationById(String(id)).then((org) => {
+        setOrgItems((prev) => ({ ...prev, [id]: org }));
+      });
+    });
+  }, [savedOrgs.join(",")]);
 
   if (savedOrgs.length === 0 && savedMaterials.length === 0) {
     return (
@@ -322,19 +345,30 @@ function SavedTab({ savedOrgs, savedMaterials, onNavigate }: { savedOrgs: number
         <div>
           <p className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-2">Организации</p>
           <div className="space-y-2">
-            {savedOrgs.map((id) => (
-              <button
-                key={id}
-                onClick={() => onNavigate("org", { id: String(id) })}
-                className="w-full flex items-center gap-3 bg-white rounded-2xl border border-[hsl(var(--border))] p-3.5 text-left hover:border-[hsl(var(--terra))/40] transition-colors"
-              >
-                <div className="w-8 h-8 rounded-xl bg-[hsl(var(--terra-light))] flex items-center justify-center">
-                  <Icon name="Building2" size={15} className="text-[hsl(var(--terra))]" />
+            {savedOrgs.map((id) => {
+              const org = orgItems[id];
+              const cat = org ? CATEGORY_META[dbCategoryToKey(org.category, org.name)] : null;
+              return (
+                <div key={id} className="flex items-center gap-3 bg-white rounded-2xl border border-[hsl(var(--border))] p-3.5">
+                  <button
+                    onClick={() => onNavigate("org", { id: String(id) })}
+                    className="flex-1 min-w-0 flex items-center gap-3 text-left"
+                  >
+                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 ${cat?.bg ?? "bg-[hsl(var(--terra-light))]"}`}>
+                      {cat ? <span className="text-sm">{cat.icon}</span> : <Icon name="Building2" size={15} className="text-[hsl(var(--terra))]" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-[hsl(var(--foreground))] truncate">{org ? org.name : "Загрузка..."}</p>
+                      {org?.city && <p className="text-[10px] text-[hsl(var(--muted-foreground))]">{org.city}</p>}
+                    </div>
+                    <Icon name="ChevronRight" size={14} className="text-[hsl(var(--muted-foreground))] flex-shrink-0" />
+                  </button>
+                  <button onClick={() => toggleOrg(id)} className="p-1.5 flex-shrink-0">
+                    <Icon name="Heart" size={15} className="text-rose-500 fill-rose-500" />
+                  </button>
                 </div>
-                <span className="text-sm font-medium text-[hsl(var(--foreground))]">Организация #{id}</span>
-                <Icon name="ChevronRight" size={14} className="ml-auto text-[hsl(var(--muted-foreground))]" />
-              </button>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

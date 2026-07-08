@@ -134,6 +134,27 @@ function parsePhoneEntry(raw: string): ParsedPhone {
   return { raw, number, label, isPriority };
 }
 
+function useSavedOrgs() {
+  const KEY = "saved_items";
+  const load = (): { orgs: number[]; materials: number[] } => {
+    try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { return { orgs: [], materials: [] }; }
+  };
+  const [saved, setSaved] = useState(load);
+
+  const toggleOrg = (id: number) => {
+    setSaved((prev) => {
+      const orgs = prev.orgs ?? [];
+      const next = orgs.includes(id) ? orgs.filter((x) => x !== id) : [...orgs, id];
+      const result = { ...prev, orgs: next };
+      localStorage.setItem(KEY, JSON.stringify(result));
+      return result;
+    });
+  };
+
+  const isSaved = (id: number) => (saved.orgs ?? []).includes(id);
+  return { toggleOrg, isSaved };
+}
+
 function ContactRow({ icon, label, value, href }: { icon: string; label: string; value: string; href?: string }) {
   const inner = (
     <div className="flex items-center gap-3 group">
@@ -154,6 +175,7 @@ export default function OrgPage({ orgId, onBack, backLabel }: Props) {
   const [org, setOrg] = useState<DbOrganization | null | undefined>(undefined);
   const [reportOpen, setReportOpen] = useState(false);
   const [otherPhonesOpen, setOtherPhonesOpen] = useState(false);
+  const { toggleOrg, isSaved } = useSavedOrgs();
 
   useEffect(() => {
     fetchOrganizationById(orgId).then((found) => {
@@ -217,7 +239,7 @@ export default function OrgPage({ orgId, onBack, backLabel }: Props) {
             <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl flex-shrink-0 shadow-sm border ${cat.bg}`}>
               {cat.icon}
             </div>
-            <div>
+            <div className="flex-1 min-w-0">
               {org.category && (
                 <span className={`inline-block text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full border mb-2 ${cat.bg} ${cat.color}`}>
                   {org.category}
@@ -231,6 +253,13 @@ export default function OrgPage({ orgId, onBack, backLabel }: Props) {
                 </div>
               )}
             </div>
+            <button
+              onClick={() => toggleOrg(org.id)}
+              className="flex-shrink-0 p-2 -mt-1 -mr-1"
+              title={isSaved(org.id) ? "Убрать из избранного" : "Добавить в избранное"}
+            >
+              <Icon name="Heart" size={22} className={isSaved(org.id) ? "text-rose-500 fill-rose-500" : "text-[hsl(var(--muted-foreground))]"} />
+            </button>
           </div>
 
           <div className={`flex items-center gap-1.5 mt-4 px-3 py-2 rounded-xl text-xs font-medium ${badge.color}`}>
