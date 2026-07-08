@@ -9,56 +9,54 @@ import {
 } from "@/components/ui/dialog";
 import { useUserLocation } from "@/hooks/useUserLocation";
 
-const DISMISS_KEY = "location_banner_dismissed";
-
-// Баннер на главной — предлагает определить город автоматически или выбрать вручную.
-// Показывается один раз, пока пользователь не определит город или явно не закроет баннер.
-export function LocationBanner() {
+// Компактная строка на месте бывшего поиска: до определения города — предложение
+// определить его (авто или вручную), после — показывает текущий город с возможностью сменить.
+// Всегда одна строка, шрифт и высота как у прежнего поля поиска — не уменьшаются.
+export function LocationBar() {
   const { location, status, detectAuto } = useUserLocation();
-  const [dismissed, setDismissed] = useState(() => localStorage.getItem(DISMISS_KEY) === "1");
   const [manualOpen, setManualOpen] = useState(false);
-
-  if (location.city || dismissed) return null;
-
-  const dismiss = () => {
-    localStorage.setItem(DISMISS_KEY, "1");
-    setDismissed(true);
-  };
 
   return (
     <>
-      <div className="flex items-start gap-3 p-4 rounded-2xl bg-blue-50 border border-blue-200 animate-slide-up">
-        <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center flex-shrink-0">
-          <Icon name="MapPin" size={16} className="text-blue-600" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="font-semibold text-xs text-[hsl(var(--foreground))]">Показать организации рядом с вами?</div>
-          <div className="text-[10px] text-[hsl(var(--muted-foreground))] mt-0.5 mb-2.5">
-            Определим ваш город и покажем сначала организации оттуда
-          </div>
-          <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3 bg-white rounded-2xl border border-[hsl(var(--border))] shadow-sm px-4 py-3.5 mb-5">
+        <Icon name="MapPin" size={16} className="text-blue-600 flex-shrink-0" />
+        {location.city ? (
+          <>
+            <span className="text-sm text-[hsl(var(--foreground))] flex-1 min-w-0 truncate">
+              Рядом с вами: <span className="font-medium">{location.city}</span>
+            </span>
+            <button
+              onClick={() => setManualOpen(true)}
+              className="flex-shrink-0 text-xs font-semibold text-[hsl(var(--terra))] hover:underline"
+            >
+              Изменить
+            </button>
+          </>
+        ) : (
+          <>
+            <span className="text-sm text-[hsl(var(--muted-foreground))] flex-1 min-w-0 truncate">
+              Показать организации рядом с вами?
+            </span>
             <button
               onClick={() => detectAuto()}
               disabled={status === "locating"}
-              className="px-3 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors disabled:opacity-60"
+              className="flex-shrink-0 px-3 py-1.5 rounded-xl bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors disabled:opacity-60"
             >
-              {status === "locating" ? "Определяем..." : "Определить автоматически"}
+              {status === "locating" ? "Определяем..." : "Определить"}
             </button>
             <button
               onClick={() => setManualOpen(true)}
-              className="px-3 py-1.5 rounded-xl bg-white border border-blue-200 text-blue-700 text-xs font-semibold hover:bg-blue-100 transition-colors"
+              className="flex-shrink-0 w-8 h-8 rounded-xl border border-[hsl(var(--border))] flex items-center justify-center text-[hsl(var(--muted-foreground))] hover:border-blue-300 hover:text-blue-600 transition-colors"
+              title="Выбрать город вручную"
             >
-              Выбрать город
+              <Icon name="Pencil" size={13} />
             </button>
-          </div>
-          {status === "error" && (
-            <div className="text-[10px] text-red-600 mt-2">Не удалось определить город автоматически. Попробуйте выбрать вручную.</div>
-          )}
-        </div>
-        <button onClick={dismiss} className="flex-shrink-0 p-1 text-[hsl(var(--muted-foreground))] hover:text-[hsl(var(--foreground))]">
-          <Icon name="X" size={14} />
-        </button>
+          </>
+        )}
       </div>
+      {status === "error" && !location.city && (
+        <div className="text-[10px] text-red-600 -mt-4 mb-4">Не удалось определить город автоматически. Выберите вручную.</div>
+      )}
       <ManualCityDialog open={manualOpen} onOpenChange={setManualOpen} />
     </>
   );
