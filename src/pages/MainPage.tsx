@@ -64,11 +64,25 @@ export default function MainPage({ onNavigate }: Props) {
             </div>
           </div>
 
-          {/* Заголовок */}
-          <h1 className="font-serif text-3xl md:text-4xl font-medium text-[hsl(var(--foreground))] mb-3 leading-tight">
-            Найдите помощь<br />
-            <span className="text-[hsl(var(--terra))] italic">рядом с вами</span>
-          </h1>
+          {/* Заголовок + Избранное */}
+          <div className="flex items-start justify-between gap-3 mb-3">
+            <h1 className="font-serif text-3xl md:text-4xl font-medium text-[hsl(var(--foreground))] leading-tight">
+              Найдите помощь<br />
+              <span className="text-[hsl(var(--terra))] italic">рядом с вами</span>
+            </h1>
+            <button
+              onClick={() => onNavigate("materials", { tab: "saved" })}
+              className="relative flex-shrink-0 w-11 h-11 rounded-2xl bg-white border border-[hsl(var(--border))] shadow-sm flex items-center justify-center hover:border-rose-300 transition-colors"
+              title="Избранное"
+            >
+              <Icon name="Heart" size={18} className={savedTotal > 0 ? "text-rose-500 fill-rose-500" : "text-[hsl(var(--muted-foreground))]"} />
+              {savedTotal > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-rose-500 text-white text-[9px] font-bold flex items-center justify-center border-2 border-white">
+                  {savedTotal > 9 ? "9+" : savedTotal}
+                </span>
+              )}
+            </button>
+          </div>
           <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed mb-6 max-w-sm">
             Справочник организаций для людей с психическими особенностями и их близких.
             Не диагностика — навигация.
@@ -124,25 +138,6 @@ export default function MainPage({ onNavigate }: Props) {
             ))}
           </div>
         </section>
-
-        {/* Избранное */}
-        {savedTotal > 0 && (
-          <button
-            onClick={() => onNavigate("materials", { tab: "saved" })}
-            className="w-full flex items-center gap-3 p-4 rounded-2xl border border-rose-200 bg-rose-50 hover:border-rose-300 transition-colors text-left"
-          >
-            <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center flex-shrink-0">
-              <Icon name="Heart" size={16} className="text-rose-500 fill-rose-500" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="font-semibold text-xs text-[hsl(var(--foreground))]">Избранное</div>
-              <div className="text-[10px] text-[hsl(var(--muted-foreground))] mt-0.5">
-                {savedTotal} сохранено — организации и материалы
-              </div>
-            </div>
-            <Icon name="ChevronRight" size={16} className="text-[hsl(var(--muted-foreground))] flex-shrink-0" />
-          </button>
-        )}
 
         {/* Предложить организацию */}
         <button
