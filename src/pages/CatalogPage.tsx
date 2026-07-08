@@ -15,8 +15,9 @@ import {
 } from "@/data/types";
 import { fetchAllOrganizations, type DbOrganization } from "@/api/organizations";
 import { useSaved } from "@/hooks/useSaved";
-
-const MAP_CONFIG_URL = "https://functions.poehali.dev/fe29379b-7928-4851-b5c5-5d6085a53f7b";
+import { useUserLocation } from "@/hooks/useUserLocation";
+import { loadYmaps, parseCoords } from "@/lib/yandexMaps";
+import { matchesCity, matchesRegion } from "@/lib/location";
 
 interface Props {
   onNavigate: (page: string, params?: Record<string, string>) => void;
@@ -27,12 +28,16 @@ interface Props {
 interface Filters {
   search: string;
   region: string;
+  nearMe: boolean;
   categories: OrgCategory[];
   ageGroups: AgeGroup[];
   specialNeeds: SpecialNeed[];
   serviceTypes: ServiceType[];
   paymentTypes: PaymentType[];
 }
+
+// Если организаций в своём городе меньше этого числа — расширяем поиск до всего региона
+const MIN_CITY_RESULTS = 3;
 
 // Первая явная метка "кому подходит" — самая заметная аудитория из target_group
 function primaryTag(org: DbOrganization): string | null {
@@ -84,40 +89,6 @@ function DbOrgCard({ org, onSelect }: { org: DbOrganization; onSelect: () => voi
 
 // ---------- Карта с кластеризацией ----------
 
-declare global {
-  interface Window {
-    ymaps?: any;
-  }
-}
-
-function parseCoords(raw: string | null): [number, number] | null {
-  if (!raw) return null;
-  const parts = raw.split(",").map((s) => parseFloat(s.trim()));
-  if (parts.length === 2 && !isNaN(parts[0]) && !isNaN(parts[1])) {
-    return [parts[0], parts[1]];
-  }
-  return null;
-}
-
-let ymapsLoadPromise: Promise<any> | null = null;
-
-function loadYmaps(apiKey: string): Promise<any> {
-  if (window.ymaps) return Promise.resolve(window.ymaps);
-  if (ymapsLoadPromise) return ymapsLoadPromise;
-
-  ymapsLoadPromise = new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = `https://api-maps.yandex.ru/2.1/?apikey=${apiKey}&lang=ru_RU`;
-    script.onload = () => {
-      window.ymaps.ready(() => resolve(window.ymaps));
-    };
-    script.onerror = reject;
-    document.head.appendChild(script);
-  });
-
-  return ymapsLoadPromise;
-}
-
 function OrgMap({ orgs, onNavigate }: { orgs: DbOrganization[]; onNavigate: Props["onNavigate"] }) {
   const [mapReady, setMapReady] = useState(false);
   const [mapError, setMapError] = useState(false);
@@ -129,23 +100,16 @@ function OrgMap({ orgs, onNavigate }: { orgs: DbOrganization[]; onNavigate: Prop
   useEffect(() => {
     if (!mapDivRef.current || mapRef.current) return;
 
-    fetch(MAP_CONFIG_URL)
-      .then((r) => r.json())
-      .then(({ apiKey }) => {
-        if (!apiKey) {
-          setMapError(true);
-          return;
-        }
-        return loadYmaps(apiKey).then((ymaps) => {
-          if (!mapDivRef.current || mapRef.current) return;
-          const map = new ymaps.Map(mapDivRef.current, {
-            center: [55.0, 60.0],
-            zoom: 4,
-            controls: ["zoomControl"],
-          });
-          mapRef.current = map;
-          setMapReady(true);
+    loadYmaps()
+      .then((ymaps) => {
+        if (!mapDivRef.current || mapRef.current) return;
+        const map = new ymaps.Map(mapDivRef.current, {
+          center: [55.0, 60.0],
+          zoom: 4,
+          controls: ["zoomControl"],
         });
+        mapRef.current = map;
+        setMapReady(true);
       })
       .catch(() => setMapError(true));
   }, []);
@@ -256,9 +220,11 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
   const [allOrgs, setAllOrgs] = useState<DbOrganization[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"list" | "map">("list");
+  const { location } = useUserLocation();
   const [filters, setFilters] = useState<Filters>({
     search: initialSearch ?? "",
     region: "Вся Россия",
+    nearMe: !!location.city,
     categories: initialCategory ? [initialCategory as OrgCategory] : [],
     ageGroups: [],
     specialNeeds: [],
@@ -281,7 +247,7 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
   const toggleArr = <T,>(arr: T[], val: T): T[] =>
     arr.includes(val) ? arr.filter((x) => x !== val) : [...arr, val];
 
-  const filtered = useMemo(() => {
+  const { list: filtered, nearMeExpanded } = useMemo(() => {
     let list = [...allOrgs];
 
     if (filters.search) {
@@ -306,9 +272,23 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
       });
     }
 
-    if (filters.region !== "Вся Россия") {
+    let nearMeExpanded = false;
+
+    if (filters.nearMe && location.city) {
+      const cityMatches = list.filter((o) => matchesCity(o.city, location.city!));
+      if (cityMatches.length >= MIN_CITY_RESULTS) {
+        list = cityMatches;
+      } else if (location.region) {
+        const regionMatches = list.filter((o) => matchesRegion(o.city, o.address, location.region!));
+        if (regionMatches.length > 0) {
+          list = regionMatches;
+          nearMeExpanded = true;
+        }
+      }
+    } else if (filters.region !== "Вся Россия") {
       list = list.filter((o) => (o.city ?? "").toLowerCase().includes(filters.region.toLowerCase()));
     }
+
     if (filters.categories.length) {
       list = list.filter((o) => filters.categories.includes(dbCategoryToKey(o.category, o.name)));
     }
@@ -316,8 +296,8 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
     if (sortBy === "updated") list.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
     else list.sort((a, b) => a.name.localeCompare(b.name));
 
-    return list;
-  }, [allOrgs, filters, sortBy]);
+    return { list, nearMeExpanded };
+  }, [allOrgs, filters, sortBy, location.city, location.region]);
 
   const activeFiltersCount =
     filters.ageGroups.length +
@@ -372,26 +352,42 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
             </button>
           </div>
 
-          {/* Переключатель Список / Карта */}
-          <div className="flex items-center gap-1 p-1 rounded-xl bg-[hsl(var(--muted))] w-fit">
-            <button
-              onClick={() => setView("list")}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                view === "list" ? "bg-white text-[hsl(var(--foreground))] shadow-sm" : "text-[hsl(var(--muted-foreground))]"
-              }`}
-            >
-              <Icon name="List" size={13} />
-              Список
-            </button>
-            <button
-              onClick={() => setView("map")}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                view === "map" ? "bg-white text-[hsl(var(--foreground))] shadow-sm" : "text-[hsl(var(--muted-foreground))]"
-              }`}
-            >
-              <Icon name="Map" size={13} />
-              Карта
-            </button>
+          {/* Переключатель Список / Карта + Рядом со мной */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-[hsl(var(--muted))] w-fit">
+              <button
+                onClick={() => setView("list")}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  view === "list" ? "bg-white text-[hsl(var(--foreground))] shadow-sm" : "text-[hsl(var(--muted-foreground))]"
+                }`}
+              >
+                <Icon name="List" size={13} />
+                Список
+              </button>
+              <button
+                onClick={() => setView("map")}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                  view === "map" ? "bg-white text-[hsl(var(--foreground))] shadow-sm" : "text-[hsl(var(--muted-foreground))]"
+                }`}
+              >
+                <Icon name="Map" size={13} />
+                Карта
+              </button>
+            </div>
+
+            {location.city && (
+              <button
+                onClick={() => setFilter("nearMe", !filters.nearMe)}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
+                  filters.nearMe
+                    ? "bg-[hsl(var(--terra))] text-white border-[hsl(var(--terra))]"
+                    : "bg-white border-[hsl(var(--border))] text-[hsl(var(--muted-foreground))]"
+                }`}
+              >
+                <Icon name="MapPin" size={13} />
+                {filters.nearMe ? (nearMeExpanded ? `Рядом (${location.region})` : `Рядом (${location.city})`) : "Рядом со мной"}
+              </button>
+            )}
           </div>
 
           {/* Категории — всегда видны */}
@@ -510,7 +506,7 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
 
             {(activeFiltersCount > 0 || filters.categories.length > 0) && (
               <button
-                onClick={() => setFilters({ search: filters.search, region: "Вся Россия", categories: [], ageGroups: [], specialNeeds: [], serviceTypes: [], paymentTypes: [] })}
+                onClick={() => setFilters((prev) => ({ search: prev.search, region: "Вся Россия", nearMe: prev.nearMe, categories: [], ageGroups: [], specialNeeds: [], serviceTypes: [], paymentTypes: [] }))}
                 className="text-sm text-[hsl(var(--terra))] hover:underline font-medium"
               >
                 Сбросить все фильтры
@@ -522,6 +518,12 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
 
       {/* Содержимое: список или карта */}
       <div className="max-w-2xl mx-auto px-4 py-4">
+        {filters.nearMe && nearMeExpanded && (
+          <div className="flex items-center gap-2 mb-3 px-3 py-2 rounded-xl bg-blue-50 text-blue-700 text-xs">
+            <Icon name="Info" size={13} className="flex-shrink-0" />
+            В городе «{location.city}» организаций мало — показаны все из региона «{location.region}»
+          </div>
+        )}
         <div className="flex items-center justify-between mb-3">
           <p className="text-sm text-[hsl(var(--muted-foreground))]">
             {loading ? "Загрузка..." : <>Найдено: <span className="font-semibold text-[hsl(var(--foreground))]">{filtered.length}</span></>}
@@ -574,7 +576,7 @@ export default function CatalogPage({ onNavigate, initialCategory, initialSearch
             <p className="font-semibold text-[hsl(var(--foreground))]">Ничего не найдено</p>
             <p className="text-xs text-[hsl(var(--muted-foreground))] mt-1 mb-4">Попробуйте изменить фильтры или регион</p>
             <button
-              onClick={() => setFilters({ search: "", region: "Вся Россия", categories: [], ageGroups: [], specialNeeds: [], serviceTypes: [], paymentTypes: [] })}
+              onClick={() => setFilters({ search: "", region: "Вся Россия", nearMe: false, categories: [], ageGroups: [], specialNeeds: [], serviceTypes: [], paymentTypes: [] })}
               className="text-sm text-[hsl(var(--terra))] font-medium hover:underline"
             >
               Сбросить все фильтры

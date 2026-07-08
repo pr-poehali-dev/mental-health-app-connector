@@ -1,5 +1,8 @@
+import { useState } from "react";
 import Icon from "@/components/ui/icon";
 import { useSaved } from "@/hooks/useSaved";
+import { useUserLocation } from "@/hooks/useUserLocation";
+import { LocationBanner, ManualCityDialog } from "@/components/LocationPrompt";
 
 interface Props {
   onNavigate: (page: string, params?: Record<string, string>) => void;
@@ -45,6 +48,8 @@ const scenarios = [
 
 export default function MainPage({ onNavigate }: Props) {
   const { total: savedTotal } = useSaved();
+  const { location } = useUserLocation();
+  const [manualOpen, setManualOpen] = useState(false);
 
   return (
     <div className="min-h-screen animate-fade-in">
@@ -89,19 +94,24 @@ export default function MainPage({ onNavigate }: Props) {
           </p>
 
           {/* Поиск */}
-          <div
-            className="flex items-center gap-3 bg-white rounded-2xl border border-[hsl(var(--border))] shadow-sm px-4 py-3.5 cursor-text mb-5"
-            onClick={() => onNavigate("catalog")}
-            role="button"
-            tabIndex={0}
-            aria-label="Поиск организаций"
-          >
-            <Icon name="Search" size={16} className="text-[hsl(var(--muted-foreground))]" />
-            <span className="text-sm text-[hsl(var(--muted-foreground))]">Поиск по организациям, городу, услугам...</span>
-            <div className="ml-auto flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[hsl(var(--muted))] text-xs text-[hsl(var(--muted-foreground))]">
-              <Icon name="MapPin" size={11} />
-              Регион
+          <div className="flex items-center gap-3 bg-white rounded-2xl border border-[hsl(var(--border))] shadow-sm px-4 py-3.5 mb-5">
+            <div
+              className="flex items-center gap-3 flex-1 min-w-0 cursor-text"
+              onClick={() => onNavigate("catalog")}
+              role="button"
+              tabIndex={0}
+              aria-label="Поиск организаций"
+            >
+              <Icon name="Search" size={16} className="text-[hsl(var(--muted-foreground))] flex-shrink-0" />
+              <span className="text-sm text-[hsl(var(--muted-foreground))] truncate">Поиск по организациям, городу, услугам...</span>
             </div>
+            <button
+              onClick={(e) => { e.stopPropagation(); setManualOpen(true); }}
+              className="flex-shrink-0 flex items-center gap-1.5 px-2 py-1 rounded-lg bg-[hsl(var(--muted))] text-xs text-[hsl(var(--muted-foreground))] hover:bg-[hsl(var(--terra-light))] hover:text-[hsl(var(--terra))] transition-colors"
+            >
+              <Icon name="MapPin" size={11} />
+              {location.city ?? "Регион"}
+            </button>
           </div>
 
           {/* Статус */}
@@ -113,6 +123,9 @@ export default function MainPage({ onNavigate }: Props) {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-5">
+
+        {/* Баннер геолокации */}
+        <LocationBanner />
 
         {/* Сценарии */}
         <section>
@@ -155,6 +168,8 @@ export default function MainPage({ onNavigate }: Props) {
         </button>
 
       </div>
+
+      <ManualCityDialog open={manualOpen} onOpenChange={setManualOpen} />
     </div>
   );
 }
