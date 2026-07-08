@@ -6,13 +6,12 @@ import Icon from "@/components/ui/icon";
 import MainPage from "@/pages/MainPage";
 import CatalogPage from "@/pages/CatalogPage";
 import OrgPage from "@/pages/OrgPage";
-import MapPage from "@/pages/MapPage";
 import EmergencyHelpPage from "@/pages/EmergencyHelpPage";
 import AdminPage from "@/pages/AdminPage";
 import MaterialsPage from "@/pages/MaterialsPage";
 import SuggestOrgPage from "@/pages/SuggestOrgPage";
 
-type Page = "home" | "catalog" | "org" | "map" | "emergency" | "admin" | "materials" | "suggest-org";
+type Page = "home" | "catalog" | "org" | "emergency" | "admin" | "materials" | "suggest-org";
 
 interface NavState {
   page: Page;
@@ -23,7 +22,6 @@ const NAV_ITEMS: { id: Page; label: string; icon: string }[] = [
   { id: "home", label: "Главная", icon: "Home" },
   { id: "catalog", label: "Каталог", icon: "Search" },
   { id: "materials", label: "Материалы", icon: "BookHeart" },
-  { id: "map", label: "Карта", icon: "Map" },
   { id: "emergency", label: "Помощь", icon: "Phone" },
 ];
 
@@ -72,12 +70,10 @@ const App = () => {
             orgId={nav.params.id || ""}
             onBack={goBack}
             onNavigate={navigate}
-            backLabel={prevPage === "map" ? "Карта" : prevPage === "catalog" ? "Каталог" : undefined}
+            backLabel={prevPage === "catalog" ? "Каталог" : undefined}
           />
         );
       }
-      case "map":
-        return <MapPage onNavigate={navigate} />;
       case "emergency":
         return <EmergencyHelpPage onNavigate={navigate} />;
       case "materials":

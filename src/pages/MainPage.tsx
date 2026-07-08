@@ -1,7 +1,4 @@
-import { useState, useEffect } from "react";
 import Icon from "@/components/ui/icon";
-import { CATEGORY_META, type OrgCategory } from "@/data/types";
-import { fetchStats } from "@/api/organizations";
 
 interface Props {
   onNavigate: (page: string, params?: Record<string, string>) => void;
@@ -46,20 +43,10 @@ const scenarios = [
 ];
 
 export default function MainPage({ onNavigate }: Props) {
-  const [stats, setStats] = useState({ total: 0, verified: 0, categories: 0 });
-
-  useEffect(() => {
-    fetchStats().then(setStats);
-  }, []);
-
-  const { verified, total, categories: activeCategoryCount } = stats;
-
-  const categories = Object.entries(CATEGORY_META) as [OrgCategory, typeof CATEGORY_META[OrgCategory]][];
-
   return (
     <div className="min-h-screen animate-fade-in">
       {/* Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-[hsl(32,40%,95%)] via-[hsl(36,33%,98%)] to-[hsl(210,30%,97%)] px-4 pt-10 pb-8">
+      <div className="relative overflow-hidden bg-gradient-to-br from-[hsl(32,40%,95%)] via-[hsl(36,33%,98%)] to-[hsl(210,30%,97%)] px-4 pt-8 pb-6">
         <div className="absolute inset-0 opacity-30" style={{backgroundImage: "radial-gradient(circle at 80% 20%, hsl(210,60%,85%) 0%, transparent 50%), radial-gradient(circle at 10% 80%, hsl(32,60%,88%) 0%, transparent 50%)"}} />
 
         <div className="relative max-w-2xl mx-auto">
@@ -100,23 +87,24 @@ export default function MainPage({ onNavigate }: Props) {
             </div>
           </div>
 
-          {/* Статистика */}
-          <div className="flex items-center gap-4 text-xs text-[hsl(var(--muted-foreground))]">
-            <span className="flex items-center gap-1">
-              <span className="w-2 h-2 rounded-full bg-emerald-500" />
-              {verified} проверено
-            </span>
-            <span>{total || "..."} организаций</span>
-            <span>{activeCategoryCount || "..."} категорий</span>
+          {/* Статус */}
+          <div className="flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]">
+            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+            Все организации проверены
           </div>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-5 space-y-6">
+      <div className="max-w-2xl mx-auto px-4 py-5 space-y-5">
 
         {/* Сценарии */}
         <section>
-          <h2 className="font-sans font-semibold text-sm text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3">Кому нужна помощь?</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-sans font-semibold text-sm text-[hsl(var(--muted-foreground))] uppercase tracking-wider">Кому нужна помощь?</h2>
+            <button onClick={() => onNavigate("catalog")} className="text-xs text-[hsl(var(--terra))] font-medium hover:underline">
+              Все →
+            </button>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             {scenarios.map((s) => (
               <button
@@ -133,37 +121,6 @@ export default function MainPage({ onNavigate }: Props) {
             ))}
           </div>
         </section>
-
-        {/* Категории */}
-        <section>
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-sans font-semibold text-sm text-[hsl(var(--muted-foreground))] uppercase tracking-wider">Категории организаций</h2>
-            <button onClick={() => onNavigate("catalog")} className="text-xs text-[hsl(var(--terra))] font-medium hover:underline">
-              Все →
-            </button>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {categories.map(([key, meta]) => (
-              <button
-                key={key}
-                onClick={() => onNavigate("catalog", { category: key })}
-                className={`flex items-center gap-3 p-3.5 rounded-2xl border text-left transition-all duration-150 card-hover ${meta.bg}`}
-              >
-                <span className="text-xl flex-shrink-0">{meta.icon}</span>
-                <div className={`font-semibold text-xs ${meta.color}`}>{meta.label}</div>
-              </button>
-            ))}
-          </div>
-        </section>
-
-        {/* Подсказка */}
-        <div className="flex items-start gap-3 p-4 rounded-2xl bg-[hsl(var(--muted))] border border-[hsl(var(--border))]">
-          <Icon name="Info" size={16} className="text-[hsl(var(--muted-foreground))] flex-shrink-0 mt-0.5" />
-          <p className="text-xs text-[hsl(var(--muted-foreground))] leading-relaxed">
-            Этот сервис — <strong>навигатор</strong>, а не медицинский ресурс. Мы помогаем найти организацию,
-            которая подходит именно вам. Данные организаций регулярно проверяются.
-          </p>
-        </div>
 
         {/* Предложить организацию */}
         <button
