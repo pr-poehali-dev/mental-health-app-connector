@@ -114,23 +114,6 @@ export default function MainPage({ onNavigate }: Props) {
 
       <div className="max-w-2xl mx-auto px-4 py-5 space-y-6">
 
-        {/* ГЛАВНАЯ КНОПКА — Нужна помощь сейчас */}
-        <button
-          onClick={() => onNavigate("emergency")}
-          className="w-full group relative overflow-hidden rounded-2xl bg-gradient-to-r from-red-500 to-red-600 text-white p-5 text-left shadow-lg shadow-red-200 hover:shadow-red-300 transition-all duration-200 hover:scale-[1.01] active:scale-[0.99]"
-          aria-label="Нужна помощь сейчас — экстренные контакты"
-        >
-          <div className="absolute right-4 top-1/2 -translate-y-1/2 text-5xl opacity-20 group-hover:opacity-30 transition-opacity select-none">🆘</div>
-          <div className="relative">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-white animate-pulse" />
-              <span className="text-red-100 text-xs font-medium uppercase tracking-wide">Горячие линии • Круглосуточно</span>
-            </div>
-            <div className="font-bold text-xl mb-0.5">Нужна помощь сейчас</div>
-            <div className="text-red-100 text-sm">Экстренные контакты и горячие линии</div>
-          </div>
-        </button>
-
         {/* Сценарии */}
         <section>
           <h2 className="font-sans font-semibold text-sm text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3">Кому нужна помощь?</h2>
