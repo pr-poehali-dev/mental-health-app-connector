@@ -154,6 +154,21 @@ export default function MainPage({ onNavigate }: Props) {
         </button>
 
       </div>
+
+      {/* Подвал */}
+      <div className="max-w-2xl mx-auto px-4 pb-8 pt-2 text-center">
+        <p className="text-xs text-[hsl(var(--muted-foreground))]">
+          Разработано{" "}
+          <a
+            href="https://mental-health-russia.ru/"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline hover:text-[hsl(var(--terra))] transition-colors"
+          >
+            Союзом охраны психического здоровья
+          </a>
+        </p>
+      </div>
     </div>
   );
 }
