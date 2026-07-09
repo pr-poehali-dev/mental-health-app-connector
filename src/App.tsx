@@ -22,7 +22,7 @@ interface NavState {
 const NAV_ITEMS: { id: Page; label: string; icon: string }[] = [
   { id: "home", label: "Главная", icon: "Home" },
   { id: "catalog", label: "Каталог", icon: "Search" },
-  { id: "materials", label: "Материалы", icon: "BookHeart" },
+  { id: "materials", label: "Поддержка", icon: "BookHeart" },
   { id: "emergency", label: "Помощь", icon: "Phone" },
 ];
 
