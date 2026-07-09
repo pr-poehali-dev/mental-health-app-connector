@@ -98,7 +98,15 @@ export default function MainPage({ onNavigate }: Props) {
           {/* Статус */}
           <div className="flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            Организации проверены Союзом охраны психического здоровья
+            Организации проверены{" "}
+            <a
+              href="https://mental-health-russia.ru/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-[hsl(var(--terra))] transition-colors"
+            >
+              Союзом охраны психического здоровья
+            </a>
           </div>
         </div>
       </div>
