@@ -84,10 +84,13 @@ export default function MainPage({ onNavigate }: Props) {
               )}
             </button>
           </div>
-          <p className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed mb-6 max-w-sm">
-            Справочник организаций для людей с психическими особенностями и их близких.
-            Не диагностика — навигация.
-          </p>
+          <div className="text-sm text-[hsl(var(--muted-foreground))] leading-relaxed mb-6 max-w-sm space-y-2">
+            <p>
+              Здесь собраны проверенные организации по всей России — для тех, кто столкнулся с психическими
+              особенностями сам, и для тех, чьи близкие через это проходят.
+            </p>
+            <p>Мы не ставим диагнозы — мы помогаем найти, к кому обратиться.</p>
+          </div>
 
           {/* Определение города — на месте бывшего поиска */}
           <LocationBar />
