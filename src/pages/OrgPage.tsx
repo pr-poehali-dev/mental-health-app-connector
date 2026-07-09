@@ -102,6 +102,58 @@ function splitSemicolon(val: string | null | undefined): string[] {
   return val.split(";").map((s) => s.trim()).filter(Boolean);
 }
 
+interface ParsedLink {
+  label: string;
+  url: string;
+  icon: string;
+}
+
+// В базе поле "Сайт / соцсети" часто содержит заглушки ("Уточняется", "Нет данных")
+// или упоминания без ссылки ("VK", "WhatsApp — см. в 2ГИС") — их не показываем,
+// оставляем только реальные кликабельные ссылки.
+const PLACEHOLDER_RE = /^(уточн|не указан|нет данных|нет сайта|сайт\s*\/\s*соцсети)/i;
+
+function parseWebsiteSocial(raw: string | null | undefined): ParsedLink[] {
+  if (!raw) return [];
+  const entries = raw.split(";").map((s) => s.trim()).filter(Boolean);
+  const links: ParsedLink[] = [];
+
+  for (const entry of entries) {
+    let label: string | null = null;
+    let value = entry;
+    const m = entry.match(/^([^:]{2,20}):\s*(.+)$/);
+    if (m && !/^https?$/i.test(m[1].trim())) {
+      label = m[1].trim();
+      value = m[2].trim();
+    }
+    if (PLACEHOLDER_RE.test(value) || PLACEHOLDER_RE.test(entry)) continue;
+
+    let url: string | null = null;
+    if (/^https?:\/\//i.test(value)) {
+      url = value;
+    } else if (/^www\./i.test(value)) {
+      url = `https://${value}`;
+    } else if (/^@[\w.]+$/.test(value)) {
+      url = `https://t.me/${value.slice(1)}`;
+    } else if (!/\s/.test(value) && /^[a-zA-Zа-яА-ЯёЁ0-9.-]+\.[a-zA-Zа-яА-ЯёЁ]{2,}(\/\S*)?$/.test(value)) {
+      url = `https://${value}`;
+    }
+    if (!url) continue;
+
+    let icon = "Globe";
+    let autoLabel = "Сайт";
+    if (/vk\.com/i.test(url)) { icon = "Share2"; autoLabel = "VK"; }
+    else if (/t\.me|telegram/i.test(url)) { icon = "Send"; autoLabel = "Telegram"; }
+    else if (/ok\.ru/i.test(url)) { icon = "Share2"; autoLabel = "Одноклассники"; }
+    else if (/rutube/i.test(url)) { icon = "Video"; autoLabel = "Rutube"; }
+    else if (/whatsapp|wa\.me/i.test(url)) { icon = "MessageCircle"; autoLabel = "WhatsApp"; }
+
+    links.push({ label: label || autoLabel, url, icon });
+  }
+
+  return links;
+}
+
 interface ParsedPhone {
   raw: string;
   number: string;
@@ -201,6 +253,7 @@ export default function OrgPage({ orgId, onBack, backLabel }: Props) {
   const helpFormats = splitSemicolon(org.help_format);
   const conditions = splitSemicolon(org.conditions);
   const targetGroups = splitSemicolon(org.target_group);
+  const links = parseWebsiteSocial(org.website_social);
 
   return (
     <div className="min-h-screen animate-fade-in">
@@ -306,13 +359,13 @@ export default function OrgPage({ orgId, onBack, backLabel }: Props) {
               <ContactRow icon="Mail" label="Email" value={org.email} href={`mailto:${org.email}`} />
             )}
 
-            {org.website_social && splitSemicolon(org.website_social).map((link, i) => (
+            {links.map((link, i) => (
               <ContactRow
                 key={i}
-                icon={link.startsWith("http") ? "Globe" : "Share2"}
-                label={link.startsWith("http") ? "Сайт" : "Соцсети"}
-                value={link}
-                href={link.startsWith("http") ? link : undefined}
+                icon={link.icon}
+                label={link.label}
+                value={link.url.replace(/^https?:\/\//, "")}
+                href={link.url}
               />
             ))}
 
