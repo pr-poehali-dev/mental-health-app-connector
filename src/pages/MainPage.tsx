@@ -61,7 +61,7 @@ export default function MainPage({ onNavigate }: Props) {
             </div>
             <div>
               <div className="font-bold text-[hsl(var(--foreground))] text-sm leading-none">НавигаторПомощи</div>
-              <div className="text-[10px] text-[hsl(var(--muted-foreground))] leading-none mt-0.5">Россия</div>
+              <div className="text-[10px] text-[hsl(var(--muted-foreground))] leading-none mt-0.5">Психическое здоровье</div>
             </div>
           </div>
 
