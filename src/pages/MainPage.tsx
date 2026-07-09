@@ -98,7 +98,7 @@ export default function MainPage({ onNavigate }: Props) {
           {/* Статус */}
           <div className="flex items-center gap-1.5 text-xs text-[hsl(var(--muted-foreground))]">
             <span className="w-2 h-2 rounded-full bg-emerald-500" />
-            Все организации проверены
+            Организации проверены Союзом охраны психического здоровья
           </div>
         </div>
       </div>
