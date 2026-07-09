@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
-import { loadYmaps } from "@/lib/yandexMaps";
 
 const KEY = "user_location";
 const EVENT = "user_location_changed";
+const NOMINATIM_HEADERS = { "Accept-Language": "ru" };
 
 export interface UserLocation {
   city: string | null;
@@ -27,13 +27,31 @@ function persist(loc: UserLocation) {
   window.dispatchEvent(new Event(EVENT));
 }
 
-// Достаём город и регион из объекта геокодера Яндекс.Карт
-function extractFromGeoObject(geoObject: any): { city: string | null; region: string | null } {
-  const locality = geoObject.getLocalities?.()[0] ?? null;
-  const areas: string[] = geoObject.getAdministrativeAreas?.() ?? [];
-  const region = areas[0] ?? null;
-  const city = locality ?? areas[1] ?? null;
+// Извлекаем город и регион из адреса Nominatim (OpenStreetMap) — бесплатный геокодер,
+// не требует API-ключа и работает прямо из браузера.
+function extractFromAddress(address: Record<string, string>): { city: string | null; region: string | null } {
+  const city =
+    address.city ?? address.town ?? address.village ?? address.municipality ?? address.county ?? null;
+  const region = address.state ?? address.region ?? null;
   return { city, region };
+}
+
+async function reverseGeocode(lat: number, lon: number): Promise<{ city: string | null; region: string | null } | null> {
+  const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json&addressdetails=1&zoom=10`;
+  const res = await fetch(url, { headers: NOMINATIM_HEADERS });
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!data.address) return null;
+  return extractFromAddress(data.address);
+}
+
+async function forwardGeocode(query: string): Promise<{ city: string | null; region: string | null } | null> {
+  const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&limit=1&countrycodes=ru`;
+  const res = await fetch(url, { headers: NOMINATIM_HEADERS });
+  if (!res.ok) return null;
+  const data = await res.json();
+  if (!data.length || !data[0].address) return null;
+  return extractFromAddress(data[0].address);
 }
 
 export function useUserLocation() {
@@ -60,17 +78,14 @@ export function useUserLocation() {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
           const { latitude, longitude } = pos.coords;
-          loadYmaps()
-            .then((ymaps) => ymaps.geocode([latitude, longitude], { kind: "locality", results: 1 }))
-            .then((res: any) => {
-              const geoObject = res.geoObjects.get(0);
-              if (!geoObject) {
+          reverseGeocode(latitude, longitude)
+            .then((extracted) => {
+              if (!extracted || (!extracted.city && !extracted.region)) {
                 setStatus("error");
                 resolve(null);
                 return;
               }
-              const { city, region } = extractFromGeoObject(geoObject);
-              const loc: UserLocation = { city, region, source: "auto" };
+              const loc: UserLocation = { city: extracted.city, region: extracted.region, source: "auto" };
               persist(loc);
               setLocation(loc);
               setStatus("idle");
@@ -92,12 +107,13 @@ export function useUserLocation() {
 
   const setManualCity = useCallback((query: string): Promise<UserLocation | null> => {
     setStatus("locating");
-    return loadYmaps()
-      .then((ymaps) => ymaps.geocode(query, { results: 1 }))
-      .then((res: any) => {
-        const geoObject = res.geoObjects.get(0);
-        const extracted = geoObject ? extractFromGeoObject(geoObject) : { city: query, region: null };
-        const loc: UserLocation = { city: extracted.city ?? query, region: extracted.region, source: "manual" };
+    return forwardGeocode(query)
+      .then((extracted) => {
+        const loc: UserLocation = {
+          city: extracted?.city ?? query,
+          region: extracted?.region ?? null,
+          source: "manual",
+        };
         persist(loc);
         setLocation(loc);
         setStatus("idle");

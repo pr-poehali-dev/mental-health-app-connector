@@ -10,13 +10,15 @@ const CITY_PREFIXES = [
 export function normalizeCity(raw: string | null | undefined): string {
   if (!raw) return "";
   let s = raw.trim().toLowerCase();
+  // Nominatim иногда возвращает "городской округ Х" вместо просто "Х"
+  s = s.replace(/^городской округ\s+/, "").replace(/\s+городской округ$/, "");
   for (const prefix of CITY_PREFIXES) {
     if (s.startsWith(prefix)) {
       s = s.slice(prefix.length).trim();
       break;
     }
   }
-  return s;
+  return s.trim();
 }
 
 // Ключевое слово региона для текстового поиска в адресе (убираем суффиксы вида "область", "край" и т.п.)
