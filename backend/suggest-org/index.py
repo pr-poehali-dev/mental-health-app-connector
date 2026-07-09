@@ -25,6 +25,7 @@ def handler(event: dict, context) -> dict:
     phone = (body.get("phone") or "").strip()
     email = (body.get("email") or "").strip()
     website = (body.get("website") or "").strip()
+    social_media = (body.get("social_media") or "").strip()
     description = (body.get("description") or "").strip()
 
     if not org_name or not contact_name or not (phone or email):
@@ -37,7 +38,8 @@ def handler(event: dict, context) -> dict:
         ("Контактное лицо", contact_name),
         ("Телефон", phone or "—"),
         ("Email", email or "—"),
-        ("Сайт/соцсети", website or "—"),
+        ("Сайт", website or "—"),
+        ("Соцсети", social_media or "—"),
         ("Описание", description or "—"),
     ]
     rows_html = "".join(

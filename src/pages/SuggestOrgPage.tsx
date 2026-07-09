@@ -11,7 +11,7 @@ const SUGGEST_URL = "https://functions.poehali.dev/c187a9cd-96b8-41f4-b33e-48f3a
 
 const categories = Object.entries(CATEGORY_META) as [OrgCategory, typeof CATEGORY_META[OrgCategory]][];
 
-export default function SuggestOrgPage({ onBack }: Props) {
+export default function SuggestOrgPage({ onBack, onNavigate }: Props) {
   const [orgName, setOrgName] = useState("");
   const [category, setCategory] = useState("");
   const [city, setCity] = useState("");
@@ -19,6 +19,7 @@ export default function SuggestOrgPage({ onBack }: Props) {
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [website, setWebsite] = useState("");
+  const [socialMedia, setSocialMedia] = useState("");
   const [description, setDescription] = useState("");
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
@@ -39,6 +40,7 @@ export default function SuggestOrgPage({ onBack }: Props) {
         phone,
         email,
         website,
+        social_media: socialMedia,
         description,
       }),
     });
@@ -79,9 +81,20 @@ export default function SuggestOrgPage({ onBack }: Props) {
         <h1 className="font-serif text-2xl font-medium text-[hsl(var(--foreground))] mb-2">
           Предложить организацию
         </h1>
-        <p className="text-sm text-[hsl(var(--muted-foreground))] mb-6 leading-relaxed">
+        <p className="text-sm text-[hsl(var(--muted-foreground))] mb-1 leading-relaxed">
           Если вы представитель организации, которая оказывает помощь людям с психическими особенностями —
           расскажите о ней, и мы добавим её в каталог после проверки.
+        </p>
+        <p className="text-sm text-[hsl(var(--muted-foreground))] mb-6 leading-relaxed">
+          Ознакомьтесь,{" "}
+          <button
+            type="button"
+            onClick={() => onNavigate("org", { id: "1" })}
+            className="text-[hsl(var(--terra))] font-medium hover:underline"
+          >
+            как выглядит карточка организации
+          </button>
+          , чтобы понимать, какие данные нам пригодятся.
         </p>
 
         <div className="space-y-4">
@@ -160,14 +173,25 @@ export default function SuggestOrgPage({ onBack }: Props) {
             />
           </div>
 
-          <div>
-            <label className="text-xs font-medium text-[hsl(var(--foreground))] mb-1.5 block">Сайт / соцсети</label>
-            <input
-              value={website}
-              onChange={(e) => setWebsite(e.target.value)}
-              placeholder="vk.com/... или сайт"
-              className="w-full text-sm border border-[hsl(var(--border))] rounded-xl px-3 py-2.5 focus:outline-none focus:border-[hsl(var(--terra))] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]"
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-medium text-[hsl(var(--foreground))] mb-1.5 block">Сайт</label>
+              <input
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
+                placeholder="site.ru"
+                className="w-full text-sm border border-[hsl(var(--border))] rounded-xl px-3 py-2.5 focus:outline-none focus:border-[hsl(var(--terra))] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-medium text-[hsl(var(--foreground))] mb-1.5 block">Соцсети</label>
+              <input
+                value={socialMedia}
+                onChange={(e) => setSocialMedia(e.target.value)}
+                placeholder="vk.com/..."
+                className="w-full text-sm border border-[hsl(var(--border))] rounded-xl px-3 py-2.5 focus:outline-none focus:border-[hsl(var(--terra))] text-[hsl(var(--foreground))] placeholder:text-[hsl(var(--muted-foreground))]"
+              />
+            </div>
           </div>
 
           <div>
